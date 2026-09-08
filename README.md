@@ -8,13 +8,7 @@ Type: GenAI / RAG / Responsible AI.
 
 ---
 
-## Screenshot
 
-Screenshot goes here once the app is running.
-
-`docs/screenshot.png`
-
----
 
 ## The problem
 
