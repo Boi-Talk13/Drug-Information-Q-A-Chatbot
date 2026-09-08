@@ -122,6 +122,8 @@ the same way it runs on a laptop.
 | IAM role | Lets the server read from S3. | So no AWS password ever goes inside our code. |
 | Security group | The firewall. Only the website port is open. | The database is never open to the internet. |
 
+Full click-by-click console steps are in [docs/aws-deploy.md](docs/aws-deploy.md).
+
 ### Deploy steps
 
 ```
