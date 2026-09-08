@@ -111,11 +111,7 @@ tests/           the 60 test questions and the scoring script
 
 ---
 
-## Demo video
 
-Link goes here. See `docs/demo_video_link.md`.
-
----
 
 ## How we test it
 
