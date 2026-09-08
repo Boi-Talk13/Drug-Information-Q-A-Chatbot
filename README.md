@@ -80,7 +80,7 @@ Then open http://localhost:8000 in your browser.
 | React | The screen. Chat on one side, PDF on the other. | We need to click a page number and have the PDF open at that page. Simpler tools reload the whole screen and cannot do this. |
 | PyMuPDF | Reads the text out of the PDF and keeps the page number. | Most PDF readers lose the page number. This one keeps it, and our whole project depends on page numbers. |
 | Chroma and BM25 | Two ways of searching. Chroma finds meaning, BM25 finds exact words. | Chroma stores the drug, section and page number together with the text, so the page number comes back with every search result. BM25 is added because drug names need exact matching. |
-| An AI model API | Writes the final answer from the text we found. | The search already found the facts, so the AI only has to write. A small cheap model does that well. |
+| Groq | Writes the final answer from the text we found. | Very fast, free tier is enough for a demo, and the API is the standard OpenAI shape so any tutorial works. Note: Groq does not do embeddings, so those run on our own server. |
 | PostgreSQL | Stores the chats and a record of every answer. | Free, safe, and the whole team has used it. The monitoring dashboard reads from it. |
 | Docker | Runs everything. | Same setup on a laptop and on the AWS server, so nothing new breaks on demo day. |
 | AWS | Where the project is deployed. | One small EC2 server runs it all. See the Deployment section below. |
@@ -173,6 +173,7 @@ backend/
 
 frontend/
   src/           the chat screen and the PDF viewer
+  dist/          the built files, served by FastAPI (not committed)
 
 data/
   pdfs/          the medicine PDFs we load (kept in AWS S3 when deployed)

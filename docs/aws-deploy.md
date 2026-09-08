@@ -82,7 +82,7 @@ Console -> **EC2** -> Instances -> Launch instance
 |---|---|
 | Name | `drugqa-server` |
 | OS image | Ubuntu Server 24.04 LTS |
-| Instance type | `t3.small` if you build the frontend on your laptop, `t3.medium` if you build it on the server |
+| Instance type | `t4g.medium` (4 GB RAM, ARM, cheaper). `t3.medium` also works. Do not use a 2 GB instance, the embedding model needs room. |
 | Key pair | Create a new one, download the .pem file, keep it safe |
 | Storage | **20 GB** (not the default 8 GB) |
 
@@ -170,15 +170,18 @@ It is a few rupees a day. Worth it for a link that stays alive. Release it on Da
 
 ---
 
-## Every night
+## Do we stop it every night?
 
-Instances -> select ours -> **Instance state -> Stop**
+**During the hackathon week, no. Leave it running.**
 
-**Stop, not Terminate.** Stop keeps everything and costs almost nothing.
-Terminate deletes the machine.
+We have AWS free credits, and a `t4g.medium` costs roughly 7 dollars for the whole
+week running non stop. A link that is alive at all times is worth more than that,
+because a mentor or judge can open it whenever they want.
 
-A server left running all week costs around four times more than one stopped
-every night, for no benefit.
+If you do want to stop it: Instances -> select ours -> **Instance state -> Stop**.
+**Stop, not Terminate.** Stop keeps everything. Terminate deletes the machine.
+
+Check the credit balance every couple of days: Console -> Billing -> Free plan status.
 
 ---
 
@@ -202,7 +205,7 @@ Fix these while building locally. Do not leave them for deploy day.
 
 | Problem | Why it happens | Fix |
 |---|---|---|
-| Server runs out of memory | `t3.small` has 2 GB. Building React on it will crash. | Build the React files on your laptop and commit the built files, or use `t3.medium`. |
+| Server runs out of memory | A 2 GB instance cannot hold the embedding model and build React. | Use `t4g.medium` or `t3.medium`, 4 GB. |
 | Frontend cannot reach the backend | The frontend calls `localhost:8000`. On AWS, localhost means the visitor's own computer, so nothing is found. | Never hardcode the URL. See the fix below. |
 | CORS errors in the browser | Frontend and backend on different ports. | Same fix as below. |
 | Docker image will not run | A Mac builds ARM images. EC2 is usually Intel. | Never copy images from a laptop. On the server, `git clone` and let it build there. |
