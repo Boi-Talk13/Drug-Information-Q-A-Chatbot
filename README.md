@@ -79,13 +79,84 @@ Then open http://localhost:8000 in your browser.
 | FastAPI | The backend. Takes the question, sends back the answer. | Our AI code is already Python, so the whole team works in one language. |
 | React | The screen. Chat on one side, PDF on the other. | We need to click a page number and have the PDF open at that page. Simpler tools reload the whole screen and cannot do this. |
 | PyMuPDF | Reads the text out of the PDF and keeps the page number. | Most PDF readers lose the page number. This one keeps it, and our whole project depends on page numbers. |
-| FAISS and BM25 | Two ways of searching. One finds meaning, one finds exact words. | Both are free and run on a laptop. Drug names need exact matching, questions need meaning matching. |
+| Chroma and BM25 | Two ways of searching. Chroma finds meaning, BM25 finds exact words. | Chroma stores the drug, section and page number together with the text, so the page number comes back with every search result. BM25 is added because drug names need exact matching. |
 | An AI model API | Writes the final answer from the text we found. | The search already found the facts, so the AI only has to write. A small cheap model does that well. |
 | PostgreSQL | Stores the chats and a record of every answer. | Free, safe, and the whole team has used it. The monitoring dashboard reads from it. |
-| Docker | Runs everything. | Same setup on a laptop and on the server, so nothing new breaks on demo day. |
+| Docker | Runs everything. | Same setup on a laptop and on the AWS server, so nothing new breaks on demo day. |
+| AWS | Where the project is deployed. | One small EC2 server runs it all. See the Deployment section below. |
 
 We picked tools that are free, simple, and already known to the team.
 Nothing here needs a big graphics card or a new account.
+
+---
+
+## Deployment (AWS)
+
+The whole project runs on one small AWS EC2 server. Everything is inside Docker,
+the same way it runs on a laptop.
+
+```
+                    User's browser
+                          |
+        +-----------------------------------+
+        |     AWS EC2 - one small server     |
+        |                                    |
+        |   Web screen  ->  API              |
+        |                    |               |
+        |                    +-> Chroma      |  search
+        |                    +-> PostgreSQL  |  chats and records
+        +-----------------------------------+
+             |                        |
+        AWS S3                  AWS CloudWatch
+    the PDF files             logs and numbers
+                                      |
+                             AI model API (outside AWS)
+```
+
+| AWS part | What it does | Why we need it |
+|---|---|---|
+| EC2 | One small computer in the cloud. Everything runs here. | This is the machine that is online during the demo, so nobody needs our laptop. |
+| S3 | Stores the medicine PDF files. | PDFs are big. Keeping them here keeps the server disk small and the files safe if the server is deleted. |
+| EBS (the EC2 disk) | Holds the Chroma index and the PostgreSQL data. | These must survive a restart. |
+| CloudWatch | Collects the logs and the numbers. | This is where the monitoring lives. |
+| IAM role | Lets the server read from S3. | So no AWS password ever goes inside our code. |
+| Security group | The firewall. Only the website port is open. | The database is never open to the internet. |
+
+### Deploy steps
+
+```
+ssh into the EC2 server
+git clone https://github.com/Boi-Talk13/Drug-Information-Q-A-Chatbot.git
+cd Drug-Information-Q-A-Chatbot
+cp .env.example .env
+```
+
+Put the real values in `.env`, then:
+
+```
+docker compose up -d
+```
+
+### Cost
+
+About 3 to 8 dollars for the whole week. S3 and CloudWatch stay inside the AWS
+free tier at our size.
+
+The habit that keeps it cheap: **stop the EC2 server when you finish work each
+night.** A stopped server costs almost nothing. Left running all week it costs
+around four times more, for no reason.
+
+### Three mistakes to avoid
+
+1. Leaving the server running overnight. Stop it every night.
+2. Not setting a billing alert. Set one at 10 dollars on day one, before anything else.
+3. Not deleting things after the demo. Delete the server, the disk, the public IP
+   and the S3 files. AWS keeps charging for a disk even when the server is stopped.
+
+### One rule
+
+The AWS server must work without our laptop. If we connect a laptop to make the
+demo work, it is not a cloud deployment.
 
 ---
 
@@ -95,14 +166,15 @@ Nothing here needs a big graphics card or a new account.
 backend/
   api/           the web API
   pdf_reader/    reads PDFs, keeps page numbers, cuts into pieces
-  search/        builds the index and searches it
+  search/        builds the Chroma index and searches it
   ai_answer/     talks to the AI, checks the page numbers are real
 
 frontend/
   src/           the chat screen and the PDF viewer
 
 data/
-  pdfs/          the medicine PDFs we load
+  pdfs/          the medicine PDFs we load (kept in AWS S3 when deployed)
+  index/         the Chroma search index (built from the PDFs, not committed)
 
 docs/            architecture diagram, screenshots, demo video link
 
@@ -159,7 +231,7 @@ Eight members. Three on the front end, four on the back end, one lead across bot
 | Back end | Team member 4 | Reads PDFs, keeps page numbers, cuts by section | CRITICAL |
 | Back end | Team member 5 | Builds the search, mixes the two search types, tunes it | CRITICAL |
 | Back end | Team member 6 | AI instructions, follow up questions, refusals, page number checks | CRITICAL |
-| Back end | Team member 7 | API, database, deployment, monitoring, cost | Normal |
+| Back end | Team member 7 | API, database, AWS deployment, monitoring, cost | Normal |
 | Lead | Team member 8 | Joins both sides, writes and scores the 60 tests, demo | Normal |
 
 Team members 4, 5 and 6 are the spine. Read the PDF, then search it, then write
