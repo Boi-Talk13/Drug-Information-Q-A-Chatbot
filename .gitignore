@@ -1,0 +1,24 @@
+# THE ONE RULE: never commit real keys.
+# .env holds real values and must never be uploaded.
+# Commit .env.example instead, with fake values.
+.env
+.env.local
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Search index (rebuilt from the PDFs)
+data/index/
+
+# OS
+.DS_Store
