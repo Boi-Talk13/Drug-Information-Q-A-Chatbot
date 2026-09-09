@@ -1,0 +1,228 @@
+/* MedCite — Soft Clinical & Document Reader Design System */
+
+:root {
+  /* Color Tokens */
+  --bg-canvas: #FAF9F5;
+  --bg-surface: #FFFFFF;
+  --bg-surface-subtle: #F4F1EA;
+  --bg-sidebar: #F3EFE6;
+  --bg-input: #FFFFFF;
+  --bg-hover: #ECE7DC;
+  
+  --border-color: #E2DDD3;
+  --border-subtle: #EDE8DF;
+  --border-focus: #4A6B5D;
+
+  --text-primary: #1F2522;
+  --text-secondary: #525E57;
+  --text-muted: #7E8B83;
+  --text-inverse: #FFFFFF;
+
+  /* Accent Tokens */
+  --accent-sage: #4A6B5D;
+  --accent-sage-hover: #3D5A4E;
+  --accent-sage-light: #EFF4F1;
+  --accent-sage-border: #C8DAD1;
+
+  --accent-blue: #3B6B88;
+  --accent-blue-light: #F0F6F9;
+  --accent-blue-border: #C4D9E5;
+
+  --accent-amber: #8A6529;
+  --accent-amber-light: #FDF9F0;
+  --accent-amber-border: #E8D9BD;
+
+  --accent-red: #8B3A3A;
+  --accent-red-light: #FAF0F0;
+  --accent-red-border: #ECCBCB;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(31, 37, 34, 0.04);
+  --shadow-md: 0 4px 12px rgba(31, 37, 34, 0.06);
+  --shadow-lg: 0 8px 24px rgba(31, 37, 34, 0.08);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D2C5;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C4BDAE;
+}
+
+/* Utility Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.pulse-badge {
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+/* Base App Layout */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-canvas);
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 100%;
+  transition: all 0.3s ease;
+}
+
+.chat-panel.with-sidebar {
+  max-width: calc(100% - 420px);
+}
+
+/* Typography Helpers */
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Citation Tag Styling */
+.citation-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--accent-sage-light);
+  color: var(--accent-sage-dark);
+  border: 1px solid var(--accent-sage-border);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  vertical-align: baseline;
+  margin: 0 3px;
+  transition: all 0.15s ease-in-out;
+  text-decoration: none;
+  user-select: none;
+}
+
+.citation-tag:hover {
+  background-color: var(--accent-sage);
+  color: var(--text-inverse);
+  border-color: var(--accent-sage-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(74, 107, 93, 0.2);
+}
+
+.citation-tag:focus-visible {
+  outline: 2px solid var(--accent-sage);
+  outline-offset: 1px;
+}
+
+/* Custom Tooltip Styling */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background-color: #242D28;
+  color: #F4F7F5;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  white-space: nowrap;
+  max-width: 320px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.tooltip-content::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #242D28 transparent transparent transparent;
+}
+
+.tooltip-wrapper:hover .tooltip-content {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
