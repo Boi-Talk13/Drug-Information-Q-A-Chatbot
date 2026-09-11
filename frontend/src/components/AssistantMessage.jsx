@@ -15,6 +15,19 @@ export default function AssistantMessage({ message, onCitationClick }) {
   /**
    * Helper to parse citation strings like "[p. 12]" or "[p. 8]" and replace with interactive Citation tags
    */
+  // The clause of the answer that ends in this page's citation marker. This is
+  // the sentence the user is verifying, so the PDF viewer highlights it on the
+  // page (it usually contains the verbatim label phrase).
+  const answerSentenceForPage = (pageNum) => {
+    if (!text) return '';
+    const re = new RegExp(`\\[p\\.\\s*(?:\\d+\\s*,\\s*)*${pageNum}(?:\\s*,\\s*\\d+)*\\s*\\]`);
+    const m = text.match(re);
+    if (!m) return '';
+    const before = text.slice(0, m.index);
+    const start = Math.max(before.lastIndexOf('. '), before.lastIndexOf('• '), before.lastIndexOf('\n'));
+    return text.slice(start + 1, m.index).trim();
+  };
+
   const renderFormattedText = (content) => {
     if (!content) return null;
 
@@ -43,6 +56,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
           source={citObj1.source || drug_name || 'Prescribing Information'}
           section={citObj1.section || section}
           text={citObj1.text}
+          answerText={answerSentenceForPage(page1)}
           onClick={onCitationClick}
         />
       );
@@ -56,6 +70,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
             source={citObj2.source || drug_name || 'Prescribing Information'}
             section={citObj2.section || section}
             text={citObj2.text}
+            answerText={answerSentenceForPage(page2)}
             onClick={onCitationClick}
           />
         );
@@ -224,7 +239,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
                 {citations.map((c, i) => (
                   <div
                     key={i}
-                    onClick={() => onCitationClick && onCitationClick(c)}
+                    onClick={() => onCitationClick && onCitationClick({ ...c, answerText: answerSentenceForPage(c.page) })}
                     style={{
                       fontSize: '0.78rem',
                       backgroundColor: 'var(--bg-surface-subtle)',

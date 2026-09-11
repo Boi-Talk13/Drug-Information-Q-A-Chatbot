@@ -9,7 +9,7 @@ import QuestionInput from './QuestionInput';
 import SuggestedQuestion from './SuggestedQuestion';
 import SafetyDisclaimer from './SafetyDisclaimer';
 import PdfViewerPanel from './PdfViewerPanel';
-import { sendQuestion, getAvailableDrugs } from '../services/apiService';
+import { sendQuestion, getAvailableDrugs, fetchAvailableDrugs } from '../services/apiService';
 
 const STORAGE_KEY = 'medcite_chat_sessions_v1';
 
@@ -48,7 +48,8 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState(initialDrug);
-  const [useLiveApi, setUseLiveApi] = useState(false);
+  // Demo Mode removed — the app always uses the live backend.
+  const useLiveApi = true;
 
   // History Sidebar visible default on wide screens
   const [showHistorySidebar, setShowHistorySidebar] = useState(window.innerWidth >= 1200);
@@ -56,9 +57,20 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
   const [showPdfPanel, setShowPdfPanel] = useState(window.innerWidth >= 1024);
   const [activeCitation, setActiveCitation] = useState(null);
 
+  // Bumped whenever the medicine library changes (upload/delete/fetch) so the
+  // dropdown and modal re-render with the real backend list.
+  const [libVersion, setLibVersion] = useState(0);
+
   const chatScrollRef = useRef(null);
   const drugs = getAvailableDrugs();
-  const currentDrugObj = drugs.find(d => d.id === selectedDrug) || drugs[0];
+  const currentDrugObj = drugs.find(d => d.id === selectedDrug) || drugs[0] || { id: selectedDrug, name: selectedDrug, pdf: '', pages: 0 };
+
+  // Load the real, indexed medicine list from the backend when live.
+  useEffect(() => {
+    if (useLiveApi) {
+      fetchAvailableDrugs().then(() => setLibVersion(v => v + 1));
+    }
+  }, [useLiveApi]);
 
   // Helper to persist sessions to localStorage & update state
   const persistSessions = (updatedSessions) => {
@@ -243,7 +255,6 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
         selectedDrug={selectedDrug}
         onSelectDrug={setSelectedDrug}
         useLiveApi={useLiveApi}
-        onToggleLiveApi={() => setUseLiveApi(!useLiveApi)}
         showPdfPanel={showPdfPanel}
         onTogglePdfPanel={() => setShowPdfPanel(!showPdfPanel)}
         showHistorySidebar={showHistorySidebar}
@@ -252,6 +263,7 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
         onClearChat={handleClearCurrentChat}
         isChatEmpty={messages.length === 0}
         onBackToLanding={onBackToLanding}
+        onLibraryChanged={() => setLibVersion(v => v + 1)}
       />
 
       {/* Main Content Body */}

@@ -1,0 +1,34 @@
+#!/bin/bash
+# Live view of the MedCite chat database — one table, refreshes in place.
+# The clock ticks every second; the database is re-queried every INTERVAL secs.
+# Usage:  bash watch-db.sh        (Ctrl+C to stop)
+DB="${DB:-medcite}"
+INTERVAL="${INTERVAL:-10}"
+
+# Short, tidy table.
+fetch() {
+  psql -d "$DB" -P pager=off -c \
+    "SELECT LEFT(user_id, 12) AS \"User\",
+            LEFT(question, 35) AS \"Question\",
+            LEFT(answer, 60)   AS \"Answer\",
+            to_char(to_timestamp(ts), 'HH24:MI:SS') AS \"Time\"
+     FROM chat_history
+     ORDER BY id DESC
+     LIMIT 15;"
+}
+
+trap 'echo; echo "stopped."; exit 0' INT
+
+while true; do
+  DATA="$(fetch)"
+  DB_TIME="$(date '+%H:%M:%S')"
+  # Tick the clock every second for INTERVAL seconds, then re-fetch.
+  for ((i = INTERVAL; i > 0; i--)); do
+    clear
+    echo "MedCite live database — chat_history   (Ctrl+C to stop)"
+    echo "DB last fetched: $DB_TIME    Now: $(date '+%H:%M:%S')    next refresh in ${i}s"
+    echo
+    echo "$DATA"
+    sleep 1
+  done
+done

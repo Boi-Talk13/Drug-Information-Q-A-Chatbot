@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, FileText, RefreshCw, PanelRight, Database, Upload, Plus, PanelLeft, Pill, ArrowLeft } from 'lucide-react';
-import { getAvailableDrugs } from '../services/apiService';
+import { ShieldCheck, FileText, RefreshCw, PanelRight, Database, Upload, Plus, PanelLeft, Pill, ArrowLeft, User } from 'lucide-react';
+import { getAvailableDrugs, getUserLabel } from '../services/apiService';
 import MedicineListModal from './MedicineListModal';
 
 export default function ChatHeader({
@@ -15,11 +15,12 @@ export default function ChatHeader({
   onNewChat,
   onClearChat,
   isChatEmpty,
-  onBackToLanding
+  onBackToLanding,
+  onLibraryChanged
 }) {
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const drugs = getAvailableDrugs();
-  const currentDrug = drugs.find(d => d.id === selectedDrug) || drugs[0];
+  const currentDrug = drugs.find(d => d.id === selectedDrug) || drugs[0] || { id: selectedDrug, name: selectedDrug, pdf: '', pages: 0 };
 
   const handleNewChatClick = (e) => {
     e.preventDefault();
@@ -248,29 +249,45 @@ export default function ChatHeader({
             </button>
           </div>
 
-          {/* API Engine Toggle (Mock vs FastAPI) */}
-          <button
-            type="button"
-            onClick={onToggleLiveApi}
-            title={useLiveApi ? 'Switch to Offline Demo Engine Mode' : 'Switch to Live FastAPI Backend'}
+          {/* Backend status badge (always live — Demo Mode removed) */}
+          <div
+            title="Answers come from the live backend and your indexed PDFs"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: useLiveApi ? 'var(--accent-blue-light)' : 'var(--bg-canvas)',
-              border: `1px solid ${useLiveApi ? 'var(--accent-blue-border)' : 'var(--border-color)'}`,
-              color: useLiveApi ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              backgroundColor: 'var(--accent-sage-light)',
+              border: '1px solid var(--accent-sage-border)',
+              color: 'var(--accent-sage-dark)',
               borderRadius: 'var(--radius-md)',
               padding: '6px 10px',
               fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              fontWeight: 600
             }}
           >
             <Database size={14} />
-            <span>{useLiveApi ? 'Live API' : 'Demo Mode'}</span>
-          </button>
+            <span>Live</span>
+          </div>
+
+          {/* Anonymous per-user session badge (no login) */}
+          <div
+            title="Your anonymous session id. Your chats are saved separately under this id."
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'var(--bg-surface-subtle)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-secondary)',
+              borderRadius: 'var(--radius-md)',
+              padding: '6px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 600
+            }}
+          >
+            <User size={14} />
+            <span>{getUserLabel()}</span>
+          </div>
 
           {/* PDF Split View Toggle */}
           <button
@@ -327,6 +344,7 @@ export default function ChatHeader({
           selectedDrug={selectedDrug}
           onSelectDrug={onSelectDrug}
           useLiveApi={useLiveApi}
+          onLibraryChanged={onLibraryChanged}
           onClose={() => setShowLibraryModal(false)}
         />
       )}

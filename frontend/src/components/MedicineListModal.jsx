@@ -1,47 +1,74 @@
-import React, { useState, useRef } from 'react';
-import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Sparkles, ExternalLink } from 'lucide-react';
-import { getAvailableDrugs, uploadMedicinePdf } from '../services/apiService';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import { getAvailableDrugs, fetchAvailableDrugs, uploadMedicinePdfs, deleteMedicine } from '../services/apiService';
 
-export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose, useLiveApi }) {
+export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose, useLiveApi, onLibraryChanged }) {
   const [medicines, setMedicines] = useState(getAvailableDrugs());
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
   const fileInputRef = useRef(null);
 
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  // Load the real, indexed medicine list from the backend when live.
+  useEffect(() => {
+    let alive = true;
+    if (useLiveApi) {
+      fetchAvailableDrugs().then(list => { if (alive) setMedicines(list); });
+    } else {
+      setMedicines(getAvailableDrugs());
     }
+    return () => { alive = false; };
+  }, [useLiveApi]);
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     setErrorMsg(null);
     setSuccessMsg(null);
-
-    // Validate PDF file type
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setErrorMsg('Invalid file type. Please select an official medicine Prescribing Information PDF (.pdf).');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
     setIsUploading(true);
 
     try {
-      const newMed = await uploadMedicinePdf(file, useLiveApi);
-      setMedicines(getAvailableDrugs());
-      onSelectDrug(newMed.id);
-      setSuccessMsg(`Successfully loaded and indexed "${file.name}". PDF is ready for Q&A!`);
+      const added = await uploadMedicinePdfs(files, useLiveApi);
+      const list = getAvailableDrugs();
+      setMedicines(list);
+      if (added[0]?.id) onSelectDrug(added[0].id);
+      onLibraryChanged && onLibraryChanged();
+      setSuccessMsg(
+        added.length === 1
+          ? `Loaded and indexed "${added[0].name}". Ready for Q&A!`
+          : `Loaded and indexed ${added.length} PDFs. Ready for Q&A!`
+      );
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to upload PDF file.');
+      setErrorMsg(err.message || 'Failed to upload PDF file(s).');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDelete = async (med) => {
+    if (!window.confirm(`Delete "${med.name}" and its PDF from the library?`)) return;
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setDeletingId(med.id);
+    try {
+      await deleteMedicine(med.id, useLiveApi);
+      const list = getAvailableDrugs();
+      setMedicines(list);
+      onLibraryChanged && onLibraryChanged();
+      if (med.id === selectedDrug && list[0]) onSelectDrug(list[0].id);
+      setSuccessMsg(`Deleted "${med.name}".`);
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to delete.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -116,6 +143,7 @@ export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose,
           type="file"
           ref={fileInputRef}
           accept=".pdf"
+          multiple
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
@@ -191,7 +219,7 @@ export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose,
             }}
           >
             {isUploading ? <Loader2 size={16} className="pulse-badge" /> : <Upload size={16} />}
-            <span>{isUploading ? 'Parsing & Indexing PDF...' : 'Upload Medicine PDF (.pdf)'}</span>
+            <span>{isUploading ? 'Parsing & Indexing PDF...' : 'Upload PDF(s) — one or many'}</span>
           </button>
         </div>
 
@@ -291,6 +319,26 @@ export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose,
                       <span>Selected</span>
                     </div>
                   )}
+                  <button
+                    type="button"
+                    title={`Delete ${med.name}`}
+                    onClick={() => handleDelete(med)}
+                    disabled={deletingId === med.id}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: '1px solid var(--accent-red-border, #E4B4B4)',
+                      color: 'var(--accent-red, #B4453C)',
+                      padding: '6px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: deletingId === med.id ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    {deletingId === med.id ? <Loader2 size={14} className="pulse-badge" /> : <Trash2 size={14} />}
+                  </button>
                 </div>
               </div>
             );

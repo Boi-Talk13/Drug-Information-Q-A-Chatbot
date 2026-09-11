@@ -6,6 +6,43 @@
 const LIVE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/chat';
 const LIVE_UPLOAD_URL = import.meta.env.VITE_UPLOAD_BASE_URL || 'http://localhost:8000/api/upload';
 
+// Origin of the backend, derived from the chat URL (e.g. http://localhost:8000).
+const API_ORIGIN = LIVE_API_URL.replace(/\/api\/chat\/?$/, '');
+
+/**
+ * URL that serves the raw PDF for a drug id, so the viewer can render the
+ * real document pages. Returns null when there is no id.
+ */
+export function getPdfUrl(drugId) {
+  if (!drugId) return null;
+  return `${API_ORIGIN}/api/pdf/${encodeURIComponent(drugId)}`;
+}
+
+/**
+ * Anonymous per-browser user id (no login). Created once, stored in
+ * localStorage, and sent with every request so the backend can keep each
+ * person's chats and logs separate (row-level isolation by user_id).
+ */
+export function getUserId() {
+  const KEY = 'medcite_user_id';
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = 'user_' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return 'anonymous';
+  }
+}
+
+/** Short, human-friendly label for the current guest, e.g. "Guest-4F2A". */
+export function getUserLabel() {
+  const id = getUserId();
+  return 'Guest-' + id.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
+}
+
 // Data-driven list of default medicine PDFs
 const DEFAULT_MEDICINES = [
   {
@@ -147,6 +184,81 @@ const MOCK_DRUG_KNOWLEDGE = {
 // In-memory dynamic medicine store for custom uploaded PDFs
 let customMedicinesList = [...DEFAULT_MEDICINES];
 
+const LIVE_DRUGS_URL = `${API_ORIGIN}/api/drugs`;
+
+/**
+ * Load the REAL list of indexed medicines from the backend and make it the
+ * active list. Falls back to the built-in demo list if the backend is off.
+ */
+export async function fetchAvailableDrugs() {
+  try {
+    const res = await fetch(LIVE_DRUGS_URL);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    const drugs = (data.drugs || []).map(d => ({
+      id: d.drug_id,
+      name: d.title && d.title !== d.drug_id.toUpperCase()
+        ? d.title
+        : d.drug_id.toUpperCase(),
+      pdf: d.filename,
+      pages: d.pages,
+      manufacturer: 'Indexed PDF',
+      status: 'Indexed & Verified',
+    }));
+    customMedicinesList = drugs;
+    return drugs;
+  } catch (err) {
+    console.warn('Could not load drugs from backend, using demo list:', err.message);
+    return [...customMedicinesList];
+  }
+}
+
+/**
+ * Delete a medicine (removes its PDF + index entry on the backend).
+ */
+export async function deleteMedicine(id, useLiveApi = true) {
+  if (useLiveApi) {
+    try {
+      const res = await fetch(`${API_ORIGIN}/api/drugs/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await fetchAvailableDrugs();
+        return true;
+      }
+    } catch (err) {
+      console.warn('Delete failed on backend:', err.message);
+    }
+  }
+  customMedicinesList = customMedicinesList.filter(m => m.id !== id);
+  return true;
+}
+
+/**
+ * Upload one or more PDFs at once. Returns the list of registered medicines.
+ */
+export async function uploadMedicinePdfs(files, useLiveApi = true) {
+  const list = Array.from(files || []);
+  const invalid = list.find(f => !f.name.toLowerCase().endsWith('.pdf'));
+  if (invalid) throw new Error(`"${invalid.name}" is not a .pdf file.`);
+  if (list.length === 0) throw new Error('No files selected.');
+
+  if (useLiveApi) {
+    const formData = new FormData();
+    list.forEach(f => formData.append('files', f));
+    const res = await fetch(LIVE_UPLOAD_URL, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error(`Upload failed (status ${res.status})`);
+    const data = await res.json();
+    await fetchAvailableDrugs();
+    return data.uploaded || [data];
+  }
+
+  // Demo fallback: register each locally.
+  const out = [];
+  for (const f of list) out.push(await uploadMedicinePdf(f, false));
+  return out;
+}
+
 /**
  * Checks if a question is asking for personalized medical advice.
  */
@@ -262,7 +374,8 @@ export async function sendQuestion({ question, conversationHistory = [], selecte
         body: JSON.stringify({
           question,
           history: conversationHistory,
-          drug_filter: selectedDrug
+          drug_filter: selectedDrug,
+          user_id: getUserId()
         })
       });
 
@@ -272,7 +385,12 @@ export async function sendQuestion({ question, conversationHistory = [], selecte
 
       return await response.json();
     } catch (err) {
-      console.warn('Live API request failed, falling back to local search engine:', err.message);
+      // Demo Mode removed: do not fabricate an answer. Surface the error so the
+      // UI shows a clear "backend unavailable" message instead of fake data.
+      console.error('Live API request failed:', err.message);
+      throw new Error(
+        'Could not reach the MedCite backend. Make sure the server is running (uvicorn on port 8000).'
+      );
     }
   }
 

@@ -17,8 +17,14 @@ node_modules/
 dist/
 build/
 
-# Search index (rebuilt from the PDFs)
+# Search index and answer log (rebuilt / recreated at runtime)
 data/index/
+# but keep the folder in git
+!data/index/.gitkeep
+
+# medicine PDFs are large and fetched separately; keep the folder, not the files
+data/pdfs/*.pdf
+data/pdfs/*.PDF
 
 # OS
 .DS_Store

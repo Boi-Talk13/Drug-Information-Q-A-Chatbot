@@ -5,11 +5,11 @@ import { BookOpen } from 'lucide-react';
  * Citation Component
  * Renders an elegant inline citation tag [p. 12] with hover tooltips and click handler.
  */
-export default function Citation({ page, source = 'Prescribing Information', section, text, onClick }) {
+export default function Citation({ page, source = 'Prescribing Information', section, text, answerText, onClick }) {
   const handleClick = (e) => {
     e.preventDefault();
     if (onClick) {
-      onClick({ page, source, section, text });
+      onClick({ page, source, section, text, answerText });
     }
   };
 

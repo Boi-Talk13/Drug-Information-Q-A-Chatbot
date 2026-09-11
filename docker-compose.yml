@@ -1,0 +1,29 @@
+# Run the whole app with:  docker compose up
+# Then open http://localhost:8000
+#
+# The app runs with no API key using the built-in extractive answerer. To have
+# Groq write the answers, put AI_API_KEY in a .env file next to this one
+# (see .env.example); compose passes it through automatically.
+
+services:
+  medcite:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Read from .env if present; harmless if unset.
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-llama-3.3-70b-versatile}
+      PDF_FOLDER: /app/data/pdfs
+      INDEX_FOLDER: /app/data/index
+    volumes:
+      # Keep PDFs and the built index on the host so they survive a restart
+      # and you can drop new PDFs in without rebuilding the image.
+      - ./data/pdfs:/app/data/pdfs
+      - ./data/index:/app/data/index
+    restart: unless-stopped
+
+# Production note: the design uses PostgreSQL for the answer log. The backend
+# ships with a zero-setup SQLite log instead (backend/api/logdb.py) so the demo
+# needs no extra service. To use Postgres, add a `db:` service here and point
+# a DATABASE_URL at it; the log shape is the same.
