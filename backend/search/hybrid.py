@@ -26,6 +26,7 @@ from .. import config
 from .bm25 import BM25, tokenize
 from .index import load_index
 from .synonyms import expand_query
+from .spellfix import build_vocabulary, correct_query
 
 
 @dataclass
@@ -70,31 +71,43 @@ class Retriever:
             self._matrix = self._tfidf.fit_transform(texts)
         # Lexical ranker.
         self._bm25 = BM25([tokenize(t) for t in texts]) if texts else None
+        # Vocabulary of real words in the PDFs, used to auto-correct typos.
+        self._vocab = build_vocabulary(texts) if texts else set()
 
     # -- info helpers -------------------------------------------------------
-    def has_drug(self, drug_id: str) -> bool:
-        return drug_id in self.documents
+    def _key(self, owner: str, drug_id: str) -> str:
+        return f"{owner}::{drug_id}"
 
-    def document(self, drug_id: str) -> Optional[Dict]:
-        return self.documents.get(drug_id)
+    def has_drug(self, drug_id: str, owner: str) -> bool:
+        return self._key(owner, drug_id) in self.documents
+
+    def document(self, drug_id: str, owner: str) -> Optional[Dict]:
+        return self.documents.get(self._key(owner, drug_id))
+
+    def documents_for(self, owner: str) -> List[Dict]:
+        """All documents owned by this user (their private library)."""
+        return [d for d in self.documents.values() if d.get("owner") == owner]
 
     # -- the search --------------------------------------------------------
-    def search(self, query: str, drug_id: Optional[str] = None, top_k: int = None) -> List[Hit]:
+    def search(self, query: str, drug_id: Optional[str] = None,
+               owner: Optional[str] = None, top_k: int = None) -> List[Hit]:
         top_k = top_k or config.TOP_K
         if not self.chunks or not query.strip():
             return []
 
-        # Indices that belong to the requested drug (search is locked to it).
+        # Search is locked to the requested drug AND to this user's own PDFs.
         candidate_idx = [
             i for i, c in enumerate(self.chunks)
-            if drug_id is None or c["drug_id"] == drug_id
+            if (drug_id is None or c["drug_id"] == drug_id)
+            and (owner is None or c.get("owner") == owner)
         ]
         if not candidate_idx:
             return []
 
-        # Expand lay wording ("side effects" -> "adverse reactions") so a
-        # plain-English question still reaches the right section.
-        expanded = expand_query(query)
+        # 1) Auto-correct typos against the document's real vocabulary, then
+        # 2) expand lay wording ("side effects" -> "adverse reactions").
+        corrected = correct_query(query, self._vocab)
+        expanded = expand_query(corrected)
         bm_all = self._bm25.scores(expanded)
         q_vec = self._tfidf.transform([expanded])
         sem_all = linear_kernel(q_vec, self._matrix).ravel()

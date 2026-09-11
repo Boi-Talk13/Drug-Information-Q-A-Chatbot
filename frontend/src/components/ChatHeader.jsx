@@ -1,3 +1,9 @@
+/**
+ * ChatHeader — the top bar.
+ * Holds the medicine picker (this user's own PDFs), the Upload PDF button that
+ * opens the library modal, the "Live" backend badge, the anonymous user badge
+ * (user-101 …), the PDF-viewer toggle, and New/Clear-chat controls.
+ */
 import React, { useState } from 'react';
 import { ShieldCheck, FileText, RefreshCw, PanelRight, Database, Upload, Plus, PanelLeft, Pill, ArrowLeft, User } from 'lucide-react';
 import { getAvailableDrugs, getUserLabel } from '../services/apiService';
@@ -194,15 +200,15 @@ export default function ChatHeader({
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
               backgroundColor: 'var(--bg-surface-subtle)',
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md) 0 0 var(--radius-md)',
-              padding: '6px 10px',
-              fontSize: '0.82rem',
+              padding: '10px 14px',
+              fontSize: '0.98rem',
               color: 'var(--text-primary)'
             }}>
-              <FileText size={15} style={{ color: 'var(--accent-sage)' }} />
+              <FileText size={18} style={{ color: 'var(--accent-sage)' }} />
               <select
                 value={selectedDrug}
                 onChange={(e) => onSelectDrug(e.target.value)}
@@ -210,8 +216,8 @@ export default function ChatHeader({
                   background: 'transparent',
                   border: 'none',
                   color: 'var(--text-primary)',
-                  fontWeight: 600,
-                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  fontSize: '0.98rem',
                   cursor: 'pointer',
                   outline: 'none',
                   paddingRight: '4px'
@@ -232,19 +238,20 @@ export default function ChatHeader({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                backgroundColor: 'var(--accent-sage-light)',
-                border: '1px solid var(--accent-sage-border)',
-                color: 'var(--accent-sage-dark)',
+                gap: '7px',
+                backgroundColor: 'var(--accent-sage)',
+                border: '1px solid var(--accent-sage)',
+                color: 'var(--text-inverse, #fff)',
                 borderRadius: '0 var(--radius-md) var(--radius-md) 0',
-                padding: '6px 10px',
-                fontSize: '0.78rem',
-                fontWeight: 600,
+                padding: '10px 18px',
+                fontSize: '0.98rem',
+                fontWeight: 700,
                 cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)',
                 transition: 'all 0.15s ease'
               }}
             >
-              <Upload size={13} />
+              <Upload size={18} />
               <span>Upload PDF</span>
             </button>
           </div>
@@ -260,12 +267,12 @@ export default function ChatHeader({
               border: '1px solid var(--accent-sage-border)',
               color: 'var(--accent-sage-dark)',
               borderRadius: 'var(--radius-md)',
-              padding: '6px 10px',
-              fontSize: '0.78rem',
-              fontWeight: 600
+              padding: '10px 12px',
+              fontSize: '0.92rem',
+              fontWeight: 700
             }}
           >
-            <Database size={14} />
+            <Database size={17} />
             <span>Live</span>
           </div>
 
@@ -280,12 +287,12 @@ export default function ChatHeader({
               border: '1px solid var(--border-color)',
               color: 'var(--text-secondary)',
               borderRadius: 'var(--radius-md)',
-              padding: '6px 10px',
-              fontSize: '0.78rem',
-              fontWeight: 600
+              padding: '10px 12px',
+              fontSize: '0.92rem',
+              fontWeight: 700
             }}
           >
-            <User size={14} />
+            <User size={17} />
             <span>{getUserLabel()}</span>
           </div>
 
@@ -301,14 +308,14 @@ export default function ChatHeader({
               border: `1px solid ${showPdfPanel ? 'var(--accent-sage-border)' : 'var(--border-color)'}`,
               color: showPdfPanel ? 'var(--accent-sage)' : 'var(--text-secondary)',
               borderRadius: 'var(--radius-md)',
-              padding: '6px 10px',
-              fontSize: '0.78rem',
-              fontWeight: 600,
+              padding: '10px 14px',
+              fontSize: '0.92rem',
+              fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             }}
           >
-            <PanelRight size={15} />
+            <PanelRight size={17} />
             <span>{showPdfPanel ? 'Hide PDF' : 'PDF Viewer'}</span>
           </button>
 

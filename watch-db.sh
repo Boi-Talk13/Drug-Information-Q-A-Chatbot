@@ -5,16 +5,21 @@
 DB="${DB:-medcite}"
 INTERVAL="${INTERVAL:-10}"
 
-# Short, tidy table.
+# Short, tidy table — grouped by day (Today / Yesterday / date) then newest first.
 fetch() {
   psql -d "$DB" -P pager=off -c \
-    "SELECT LEFT(user_id, 12) AS \"User\",
-            LEFT(question, 35) AS \"Question\",
-            LEFT(answer, 60)   AS \"Answer\",
-            to_char(to_timestamp(ts), 'HH24:MI:SS') AS \"Time\"
+    "SELECT CASE
+              WHEN to_timestamp(ts)::date = current_date THEN 'Today'
+              WHEN to_timestamp(ts)::date = current_date - 1 THEN 'Yesterday'
+              ELSE to_char(to_timestamp(ts), 'DD Mon')
+            END AS \"Day\",
+            to_char(to_timestamp(ts), 'HH24:MI') AS \"Time\",
+            user_id AS \"User\",
+            LEFT(question, 32) AS \"Question\",
+            LEFT(answer, 55)   AS \"Answer\"
      FROM chat_history
-     ORDER BY id DESC
-     LIMIT 15;"
+     ORDER BY ts DESC
+     LIMIT 20;"
 }
 
 trap 'echo; echo "stopped."; exit 0' INT

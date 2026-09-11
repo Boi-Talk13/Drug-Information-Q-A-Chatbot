@@ -22,9 +22,10 @@ data/index/
 # but keep the folder in git
 !data/index/.gitkeep
 
-# medicine PDFs are large and fetched separately; keep the folder, not the files
-data/pdfs/*.pdf
-data/pdfs/*.PDF
+# medicine PDFs are large / user-private; keep the folder, never the files
+# (covers per-user subfolders too, e.g. data/pdfs/user-101/*.pdf)
+data/pdfs/**
+!data/pdfs/.gitkeep
 
 # OS
 .DS_Store

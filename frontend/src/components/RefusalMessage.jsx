@@ -1,3 +1,8 @@
+/**
+ * RefusalMessage — shown when the bot safely declines: no matching document,
+ * out-of-scope question, or nothing found in the label. This is the Responsible-AI
+ * moment (the bot knows when NOT to answer) rather than guessing.
+ */
 import React from 'react';
 import { HelpCircle, ShieldAlert, Info } from 'lucide-react';
 

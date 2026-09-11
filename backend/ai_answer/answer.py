@@ -111,11 +111,12 @@ def answer_question(
     history: Optional[List[Dict]] = None,
     drug_filter: Optional[str] = None,
     retriever: Optional[Retriever] = None,
+    user_id: Optional[str] = None,
 ) -> Dict:
     history = history or []
     retriever = retriever or Retriever()
 
-    doc = retriever.document(drug_filter) if drug_filter else None
+    doc = retriever.document(drug_filter, user_id) if drug_filter else None
     drug_name = doc["title"] if doc else (drug_filter or "this medicine").upper()
     has_drug = bool(doc)
 
@@ -125,7 +126,7 @@ def answer_question(
         return safety.smalltalk_response(kind, drug_name, has_drug)
 
     # 1. No document loaded for this drug -> honest refusal.
-    if drug_filter and not retriever.has_drug(drug_filter):
+    if drug_filter and not retriever.has_drug(drug_filter, user_id):
         return safety.refusal_no_document(drug_name)
 
     # 2. Clearly outside a drug label -> refuse.
@@ -134,7 +135,7 @@ def answer_question(
 
     # 3. Resolve short follow-ups against the chat, then search.
     resolved = safety.rewrite_followup(question, history)
-    hits = retriever.search(resolved, drug_id=drug_filter, top_k=config.TOP_K)
+    hits = retriever.search(resolved, drug_id=drug_filter, owner=user_id, top_k=config.TOP_K)
 
     top_score = hits[0].score if hits else 0.0
     # Nothing at all worth showing -> refuse (but kindly).

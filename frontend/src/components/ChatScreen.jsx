@@ -1,3 +1,10 @@
+/**
+ * ChatScreen — the main app screen.
+ * Ties together the header, the chat history sidebar, the message stream and the
+ * PDF viewer. It sends each question to the backend (services/apiService), stores
+ * conversations in the browser (localStorage), resolves this browser's short
+ * user id (user-101 …), and loads the user's private medicine library.
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import ChatHeader from './ChatHeader';
 import ChatHistorySidebar from './ChatHistorySidebar';
@@ -9,7 +16,7 @@ import QuestionInput from './QuestionInput';
 import SuggestedQuestion from './SuggestedQuestion';
 import SafetyDisclaimer from './SafetyDisclaimer';
 import PdfViewerPanel from './PdfViewerPanel';
-import { sendQuestion, getAvailableDrugs, fetchAvailableDrugs } from '../services/apiService';
+import { sendQuestion, getAvailableDrugs, fetchAvailableDrugs, resolveUserId } from '../services/apiService';
 
 const STORAGE_KEY = 'medcite_chat_sessions_v1';
 
@@ -68,9 +75,21 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
   // Load the real, indexed medicine list from the backend when live.
   useEffect(() => {
     if (useLiveApi) {
-      fetchAvailableDrugs().then(() => setLibVersion(v => v + 1));
+      fetchAvailableDrugs().then((list) => {
+        // Select the user's first uploaded drug so the picker/suggestions
+        // reflect a real medicine (not the hardcoded default).
+        if (list && list.length > 0 && !list.some(d => d.id === selectedDrug)) {
+          setSelectedDrug(list[0].id);
+        }
+        setLibVersion(v => v + 1);
+      });
     }
   }, [useLiveApi]);
+
+  // Resolve this browser's short id (user-101, ...) so the badge shows it.
+  useEffect(() => {
+    resolveUserId().then(() => setLibVersion(v => v + 1));
+  }, []);
 
   // Helper to persist sessions to localStorage & update state
   const persistSessions = (updatedSessions) => {
@@ -114,6 +133,14 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
   };
 
   // Handle deleting an individual chat session
+  // Rename a chat to any name the user types.
+  const handleRenameSession = (sessionId, newTitle) => {
+    const updated = sessions.map(s =>
+      s.id === sessionId ? { ...s, title: newTitle } : s
+    );
+    persistSessions(updated);
+  };
+
   const handleDeleteSession = (sessionId) => {
     const updated = sessions.filter(s => s.id !== sessionId);
     persistSessions(updated);
@@ -274,6 +301,7 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
           activeSessionId={activeSessionId}
           onSelectSession={handleSelectSession}
           onDeleteSession={handleDeleteSession}
+          onRenameSession={handleRenameSession}
           onClearAllSessions={handleClearAllSessions}
           isOpen={showHistorySidebar}
           onClose={() => setShowHistorySidebar(false)}
@@ -293,6 +321,8 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
               <SuggestedQuestion
                 onSelectQuestion={handleSendQuestion}
                 selectedDrugName={currentDrugObj.name}
+                hasDrugs={drugs.length > 0}
+                onUploaded={(id) => { if (id) setSelectedDrug(id); setLibVersion(v => v + 1); }}
               />
             ) : (
               <div style={{ maxWidth: '820px', margin: '0 auto' }}>

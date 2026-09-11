@@ -1,17 +1,45 @@
-import React from 'react';
-import { BookOpen, ShieldAlert, HelpCircle, ArrowRight, Sparkles } from 'lucide-react';
+/**
+ * SuggestedQuestion — the welcome screen shown before any messages.
+ * If the user's library is empty it prompts them to upload a PDF; otherwise it
+ * shows example questions (indications, dose, side effects, warnings) plus two
+ * Responsible-AI test prompts (an advice question and an unanswerable one).
+ */
+import React, { useRef, useState } from 'react';
+import { BookOpen, ShieldAlert, HelpCircle, ArrowRight, Sparkles, UploadCloud, Loader2 } from 'lucide-react';
+import { uploadMedicinePdfs, getAvailableDrugs } from '../services/apiService';
 
-export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName = 'RINVOQ' }) {
+export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, hasDrugs = true, onUploaded }) {
+  const drug = selectedDrugName || 'this medicine';
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const added = await uploadMedicinePdfs(files, true);
+      getAvailableDrugs();
+      if (onUploaded) onUploaded(added[0]?.id);
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed.');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
   const suggestions = [
     {
       type: 'indication',
-      question: `What are the approved indications for ${selectedDrugName}?`,
+      question: `What are the approved indications for ${drug}?`,
       category: 'Indications & Uses',
       icon: BookOpen
     },
     {
       type: 'dose',
-      question: `What is the recommended starting dose of ${selectedDrugName}?`,
+      question: `What is the recommended starting dose of ${drug}?`,
       category: 'Dosage & Admin',
       icon: BookOpen
     },
@@ -23,13 +51,13 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName =
     },
     {
       type: 'warnings',
-      question: `What boxed warnings are listed for ${selectedDrugName}?`,
+      question: `What boxed warnings are listed for ${drug}?`,
       category: 'Boxed Warnings',
       icon: BookOpen
     },
     {
       type: 'advice_test',
-      question: `Should I stop taking ${selectedDrugName} if my symptoms improve?`,
+      question: `Should I stop taking ${drug} if my symptoms improve?`,
       category: 'Safety Advice Test',
       icon: ShieldAlert,
       tag: 'Responsible AI Test'
@@ -89,7 +117,54 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName =
         Get information directly from official medicine prescribing documents, with the exact source page shown for every fact.
       </p>
 
-      {/* Suggestion Grid */}
+      {/* Empty state: a clickable dropzone to upload the first PDF */}
+      {!hasDrugs ? (
+        <div
+          onClick={() => !uploading && fileRef.current && fileRef.current.click()}
+          style={{
+            border: '2px dashed var(--accent-sage-border)',
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-md)',
+            padding: '36px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px',
+            cursor: uploading ? 'wait' : 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-sage)'; e.currentTarget.style.backgroundColor = 'var(--accent-sage-light)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--accent-sage-border)'; e.currentTarget.style.backgroundColor = 'var(--bg-surface)'; }}
+        >
+          <input ref={fileRef} type="file" accept=".pdf" multiple onChange={handleFiles} style={{ display: 'none' }} />
+          <UploadCloud size={38} style={{ color: 'var(--accent-sage)' }} />
+          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            {uploading ? 'Uploading & indexing…' : 'Upload a medicine PDF to get started'}
+          </div>
+          <div style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', maxWidth: '460px', lineHeight: 1.5 }}>
+            Your library is empty. <strong>Click here</strong> (or the Upload PDF button top-right)
+            to add one or more medicine PDFs. Then ask questions and every answer cites the exact page.
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (!uploading && fileRef.current) fileRef.current.click(); }}
+            disabled={uploading}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              backgroundColor: 'var(--accent-sage)', color: 'var(--text-inverse, #fff)',
+              border: 'none', borderRadius: 'var(--radius-md)', padding: '10px 20px',
+              fontSize: '0.95rem', fontWeight: 700, cursor: uploading ? 'wait' : 'pointer',
+              marginTop: '4px'
+            }}
+          >
+            {uploading ? <Loader2 size={16} className="pulse-badge" /> : <UploadCloud size={16} />}
+            <span>{uploading ? 'Please wait…' : 'Choose PDF file(s)'}</span>
+          </button>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>PDF only · max 100 MB per file</div>
+          {uploadError && <div style={{ color: 'var(--accent-red, #B4453C)', fontSize: '0.85rem' }}>{uploadError}</div>}
+        </div>
+      ) : (
+      /* Suggestion Grid */
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
@@ -168,6 +243,7 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName =
           );
         })}
       </div>
+      )}
     </div>
   );
 }

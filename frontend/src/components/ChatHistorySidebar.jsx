@@ -1,5 +1,10 @@
-import React from 'react';
-import { MessageSquare, Trash2, Clock, FileText, ChevronLeft, RefreshCw } from 'lucide-react';
+/**
+ * ChatHistorySidebar — the left panel listing saved conversations.
+ * Each chat has a right-click (or ⋯) menu with Open / Rename / Delete. Renaming
+ * edits the title inline. Sessions are stored in the browser (localStorage).
+ */
+import React, { useState, useEffect } from 'react';
+import { MessageSquare, Trash2, Clock, FileText, ChevronLeft, RefreshCw, Pencil, Check, MoreVertical, FolderOpen } from 'lucide-react';
 
 export default function ChatHistorySidebar({
   sessions,
@@ -7,10 +12,38 @@ export default function ChatHistorySidebar({
   onSelectSession,
   onDeleteSession,
   onClearAllSessions,
+  onRenameSession,
   isOpen,
   onClose
 }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [menu, setMenu] = useState(null); // { id, x, y }
+
+  // Close the context menu on any outside click or Escape.
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e) => { if (e.key === 'Escape') setMenu(null); };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('keydown', onKey); };
+  }, [menu]);
+
   if (!isOpen) return null;
+
+  const startEdit = (session) => {
+    setEditingId(session.id);
+    setEditValue(session.title || '');
+  };
+  const commitEdit = () => {
+    if (editingId && onRenameSession) {
+      const name = editValue.trim();
+      if (name) onRenameSession(editingId, name);
+    }
+    setEditingId(null);
+    setEditValue('');
+  };
 
   return (
     <aside style={{
@@ -34,8 +67,8 @@ export default function ChatHistorySidebar({
         justifyContent: 'space-between',
         backgroundColor: 'var(--bg-surface)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.92rem' }}>
-          <Clock size={16} style={{ color: 'var(--accent-sage)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+          <Clock size={20} style={{ color: 'var(--accent-sage)' }} />
           <span>Chat History</span>
         </div>
 
@@ -86,11 +119,12 @@ export default function ChatHistorySidebar({
               <div
                 key={session.id}
                 onClick={() => onSelectSession(session.id)}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMenu({ id: session.id, x: e.clientX, y: e.clientY }); }}
                 style={{
                   backgroundColor: isActive ? 'var(--accent-sage-light)' : 'var(--bg-surface)',
                   border: `1px solid ${isActive ? 'var(--accent-sage-border)' : 'var(--border-subtle)'}`,
                   borderRadius: 'var(--radius-md)',
-                  padding: '10px 12px',
+                  padding: '14px 16px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -101,27 +135,51 @@ export default function ChatHistorySidebar({
                 }}
               >
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <div style={{
-                    fontSize: '0.84rem',
-                    fontWeight: isActive ? 600 : 450,
-                    color: isActive ? 'var(--accent-sage-dark)' : 'var(--text-primary)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    lineHeight: 1.3
-                  }}>
-                    {session.title || 'Untitled Chat'}
-                  </div>
+                  {editingId === session.id ? (
+                    <input
+                      autoFocus
+                      value={editValue}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={commitEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitEdit();
+                        if (e.key === 'Escape') { setEditingId(null); setEditValue(''); }
+                      }}
+                      style={{
+                        width: '100%',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--accent-sage)',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        outline: 'none'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      fontSize: '1rem',
+                      fontWeight: isActive ? 700 : 600,
+                      color: isActive ? 'var(--accent-sage-dark)' : 'var(--text-primary)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      lineHeight: 1.35
+                    }}>
+                      {session.title || 'Untitled Chat'}
+                    </div>
+                  )}
 
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    marginTop: '4px',
-                    fontSize: '0.72rem',
+                    marginTop: '6px',
+                    fontSize: '0.84rem',
                     color: 'var(--text-muted)'
                   }}>
-                    <FileText size={11} style={{ color: 'var(--accent-sage)' }} />
+                    <FileText size={14} style={{ color: 'var(--accent-sage)' }} />
                     <span style={{ textTransform: 'uppercase', fontWeight: 600 }}>
                       {session.selectedDrug || 'RINVOQ'}
                     </span>
@@ -130,29 +188,27 @@ export default function ChatHistorySidebar({
                   </div>
                 </div>
 
-                {/* Delete Individual Chat Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteSession(session.id);
-                  }}
-                  title="Delete conversation"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '3px',
-                    borderRadius: '4px',
-                    opacity: isActive ? 0.9 : 0.5,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-red)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <Trash2 size={13} />
-                </button>
+                {editingId === session.id ? (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); commitEdit(); }}
+                    title="Save name"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-sage)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', flexShrink: 0 }}
+                  >
+                    <Check size={18} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setMenu({ id: session.id, x: e.clientX, y: e.clientY }); }}
+                    title="Options"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px', opacity: 0.7, display: 'flex', flexShrink: 0 }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+                )}
               </div>
             );
           })
@@ -179,18 +235,62 @@ export default function ChatHistorySidebar({
               border: '1px solid var(--border-color)',
               color: 'var(--text-secondary)',
               borderRadius: 'var(--radius-sm)',
-              padding: '6px 10px',
-              fontSize: '0.78rem',
-              fontWeight: 500,
+              padding: '10px 14px',
+              fontSize: '0.92rem',
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             }}
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={15} />
             <span>Clear All History</span>
           </button>
         </div>
       )}
+
+      {/* Right-click / ⋯ context menu: Open · Rename · Delete */}
+      {menu && (() => {
+        const session = sessions.find(s => s.id === menu.id);
+        if (!session) return null;
+        const item = (icon, label, onClick, danger) => (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setMenu(null); onClick(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+              background: 'transparent', border: 'none', textAlign: 'left',
+              padding: '9px 14px', fontSize: '0.92rem', fontWeight: 500, cursor: 'pointer',
+              color: danger ? 'var(--accent-red, #B4453C)' : 'var(--text-primary)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface-subtle)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            {icon}<span>{label}</span>
+          </button>
+        );
+        return (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: Math.min(menu.y, window.innerHeight - 150),
+              left: Math.min(menu.x, window.innerWidth - 180),
+              width: 170,
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '10px',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '6px',
+              zIndex: 2000
+            }}
+          >
+            {item(<FolderOpen size={16} />, 'Open', () => onSelectSession(session.id))}
+            {item(<Pencil size={16} />, 'Rename', () => startEdit(session))}
+            <div style={{ height: 1, backgroundColor: 'var(--border-subtle)', margin: '4px 0' }} />
+            {item(<Trash2 size={16} />, 'Delete', () => onDeleteSession(session.id), true)}
+          </div>
+        );
+      })()}
     </aside>
   );
 }

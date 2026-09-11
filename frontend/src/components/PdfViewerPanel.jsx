@@ -1,3 +1,11 @@
+/**
+ * PdfViewerPanel — the real PDF viewer on the right.
+ * Renders the actual PDF with react-pdf (pdf.js), lazily (only pages near view,
+ * for speed). When a citation is clicked it jumps to that page and highlights
+ * the exact source passage (longest-common-run match against the page text).
+ * Has zoom controls and a drag handle to resize the panel. The PDF is fetched
+ * per-user from /api/pdf/<drug>?user_id=… so users only see their own files.
+ */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -88,8 +96,9 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
   const scrollRef = useRef(null);
   const pageRefs = useRef({});
   const pdfDocRef = useRef(null);
-  // { page, set:Set<itemIndex> } computed for the cited page only.
-  const [highlight, setHighlight] = useState({ page: null, set: new Set() });
+  // { page, answer, chunk } — normalised target strings for the cited page.
+  // All matching happens against the rendered spans (see applyHighlightToDom).
+  const [highlight, setHighlight] = useState({ page: null, answer: '', chunk: '' });
 
   // react-pdf reloads if the options object identity changes — memoise it.
   const fileProp = useMemo(() => (pdfUrl ? { url: pdfUrl } : null), [pdfUrl]);
@@ -161,57 +170,91 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
     if (activeCitation?.page) setTimeout(() => scrollToPage(activeCitation.page), 200);
   };
 
-  // Compute the exact contiguous run of text items on the cited page that
-  // matches the answer's source text, so we highlight only that sentence.
+  // Store the normalised target strings; the actual matching + highlighting is
+  // done against the rendered spans in applyHighlightToDom (same source, so it
+  // always lines up).
   useEffect(() => {
-    let cancelled = false;
-    async function compute() {
-      const pdf = pdfDocRef.current;
-      if (!pdf || !activeCitation?.page || !activeCitation?.text) {
-        setHighlight({ page: null, set: new Set() });
-        return;
-      }
-      try {
-        const page = await pdf.getPage(activeCitation.page);
-        const tc = await page.getTextContent();
-        // Build a normalised concatenation of the page, remembering the char
-        // span each text item occupies.
-        let concat = '';
-        const spans = [];
-        tc.items.forEach((it, idx) => {
-          const nrm = normalise(it.str);
-          const start = concat.length;
-          concat += nrm + ' ';
-          spans.push({ idx, start, end: concat.length });
-        });
-        // Prefer the answer sentence for this page (it holds the verbatim label
-        // phrase the user is checking); fall back to the chunk snippet.
-        const answerNorm = normalise(activeCitation.answerText);
-        const textNorm = normalise(activeCitation.text);
-        let best = { pos: -1, length: 0 };
-        if (answerNorm) best = longestCommonRun(answerNorm, concat);
-        // If the answer sentence didn't give a solid, specific match, fall back
-        // to the chunk snippet (which is verbatim page text).
-        if (best.length < 22 && textNorm) {
-          const alt = longestCommonRun(textNorm, concat);
-          if (alt.length > best.length) best = alt;
-        }
-        const { pos, length } = best;
-        const set = new Set();
-        if (pos >= 0 && length >= 18) {
-          const endPos = pos + length;
-          spans.forEach(s => {
-            if (s.start < endPos && s.end > pos) set.add(s.idx);
-          });
-        }
-        if (!cancelled) setHighlight({ page: activeCitation.page, set });
-      } catch {
-        if (!cancelled) setHighlight({ page: null, set: new Set() });
-      }
+    if (!activeCitation?.page) {
+      setHighlight({ page: null, answer: '', chunk: '' });
+      return;
     }
-    compute();
-    return () => { cancelled = true; };
+    setHighlight({
+      page: activeCitation.page,
+      answer: normalise(activeCitation.answerText),
+      chunk: normalise(activeCitation.text),
+    });
   }, [activeCitation, numPages]);
+
+  // Apply the highlight directly to the rendered text-layer spans of a page.
+  // Doing it in the DOM (rather than via customTextRenderer) is reliable even
+  // when the highlight set is computed after the page has already rendered.
+  const applyHighlightToDom = useCallback((pageNum) => {
+    const node = pageRefs.current[pageNum];
+    if (!node) return;
+    const layer = node.querySelector('.react-pdf__Page__textContent') || node.querySelector('.textLayer');
+    if (!layer) return;
+    const spans = Array.from(layer.querySelectorAll('span')).filter(s => s.textContent);
+    spans.forEach(sp => sp.classList.remove('medcite-hl'));
+
+    if (highlight.page !== pageNum) return;
+    const { answer, chunk } = highlight;
+    if (!answer && !chunk) return;
+
+    // Normalised concatenation of the REAL spans (+ each span's char range).
+    let concat = '';
+    const ranges = [];
+    spans.forEach(sp => {
+      const n = normalise(sp.textContent);
+      const start = concat.length;
+      concat += n + ' ';
+      ranges.push({ sp, start, end: concat.length });
+    });
+
+    // 1) Strong exact match: highlight the longest run shared with the page.
+    let best = { pos: -1, length: 0 };
+    if (answer) best = longestCommonRun(answer, concat);
+    if (best.length < 22 && chunk) {
+      const alt = longestCommonRun(chunk, concat);
+      if (alt.length > best.length) best = alt;
+    }
+    if (best.pos >= 0 && best.length >= 22) {
+      const endPos = best.pos + best.length;
+      ranges.forEach(r => { if (r.start < endPos && r.end > best.pos) r.sp.classList.add('medcite-hl'); });
+      return;
+    }
+
+    // 2) Paraphrase fallback: highlight the page LINE with the most word
+    // overlap. Group spans into visual lines by their vertical position.
+    const targetWords = new Set((answer + ' ' + chunk).split(' ').filter(w => w.length > 3));
+    const lines = [];
+    let cur = null, lastTop = null;
+    spans.forEach(sp => {
+      const top = Math.round(sp.getBoundingClientRect().top);
+      if (cur && lastTop !== null && Math.abs(top - lastTop) <= 4) {
+        cur.spans.push(sp); cur.text += ' ' + sp.textContent;
+      } else {
+        cur = { spans: [sp], text: sp.textContent, top };
+        lines.push(cur);
+      }
+      lastTop = top;
+    });
+    let bestLine = null, bestScore = 0;
+    for (const ln of lines) {
+      const words = normalise(ln.text).split(' ').filter(w => w.length > 3);
+      let score = 0;
+      for (const w of words) if (targetWords.has(w)) score++;
+      if (score > bestScore) { bestScore = score; bestLine = ln; }
+    }
+    if (bestLine && bestScore >= 2) bestLine.spans.forEach(sp => sp.classList.add('medcite-hl'));
+  }, [highlight]);
+
+  // Re-apply whenever the highlight changes (page already on screen).
+  useEffect(() => {
+    if (highlight.page) {
+      applyHighlightToDom(highlight.page);
+      setTimeout(() => applyHighlightToDom(highlight.page), 60);
+    }
+  }, [highlight, applyHighlightToDom]);
 
   const goto = (p) => {
     if (!numPages) return;
@@ -220,19 +263,6 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
     setPageInput(String(n));
     scrollToPage(n);
   };
-
-  // Highlight only the exact matched item indices on the cited page.
-  const makeTextRenderer = useCallback((pageNumber) => {
-    if (!highlight.set || highlight.page !== pageNumber || highlight.set.size === 0) {
-      return undefined;
-    }
-    return ({ str, itemIndex }) => {
-      const s = str || '';
-      return highlight.set.has(itemIndex)
-        ? `<mark class="medcite-hl">${escapeHtml(s)}</mark>`
-        : escapeHtml(s);
-    };
-  }, [highlight]);
 
   return (
     <aside style={{
@@ -376,7 +406,7 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
                       width={pageWidth}
                       renderAnnotationLayer={false}
                       renderTextLayer={true}
-                      customTextRenderer={makeTextRenderer(p)}
+                      onRenderTextLayerSuccess={() => applyHighlightToDom(p)}
                       loading={<div style={{ height: estHeight, background: '#fff' }} />}
                     />
                   ) : (

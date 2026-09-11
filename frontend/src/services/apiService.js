@@ -15,32 +15,69 @@ const API_ORIGIN = LIVE_API_URL.replace(/\/api\/chat\/?$/, '');
  */
 export function getPdfUrl(drugId) {
   if (!drugId) return null;
-  return `${API_ORIGIN}/api/pdf/${encodeURIComponent(drugId)}`;
+  const uid = getUserId() || 'anonymous';
+  return `${API_ORIGIN}/api/pdf/${encodeURIComponent(drugId)}?user_id=${encodeURIComponent(uid)}`;
 }
 
 /**
- * Anonymous per-browser user id (no login). Created once, stored in
- * localStorage, and sent with every request so the backend can keep each
- * person's chats and logs separate (row-level isolation by user_id).
+ * Anonymous per-browser identity (no login).
+ * - A random `token` is created once and kept in localStorage (stable per browser).
+ * - The backend maps that token to a short sequential id (user-101, user-102, ...)
+ *   and we cache it. Every request sends this short id so the backend keeps each
+ *   person's chats and logs separate (row-level isolation by user_id).
  */
-export function getUserId() {
-  const KEY = 'medcite_user_id';
+const API_ORIGIN_USER = LIVE_API_URL.replace(/\/api\/chat\/?$/, '');
+
+function getBrowserToken() {
+  const KEY = 'medcite_token';
   try {
-    let id = localStorage.getItem(KEY);
-    if (!id) {
-      id = 'user_' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
-      localStorage.setItem(KEY, id);
+    let t = localStorage.getItem(KEY);
+    if (!t) {
+      t = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+      localStorage.setItem(KEY, t);
     }
-    return id;
+    return t;
   } catch {
-    return 'anonymous';
+    return 'anon-token';
   }
 }
 
-/** Short, human-friendly label for the current guest, e.g. "Guest-4F2A". */
+/** The cached short id (only a valid "user-NNN"; older long ids are ignored). */
+export function getUserId() {
+  try {
+    const v = localStorage.getItem('medcite_user_id');
+    return v && /^user-\d+$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ask the backend for this browser's short id (user-101, ...) and cache it. */
+export async function resolveUserId() {
+  const cached = getUserId();
+  if (cached) return cached;
+  try {
+    const res = await fetch(`${API_ORIGIN_USER}/api/user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: getBrowserToken() }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.user_id) {
+        try { localStorage.setItem('medcite_user_id', data.user_id); } catch {}
+        return data.user_id;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not resolve user id:', err.message);
+  }
+  return null;
+}
+
+/** Label for the header badge, e.g. "user-101" (or "connecting…" until ready). */
 export function getUserLabel() {
-  const id = getUserId();
-  return 'Guest-' + id.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
+  return getUserId() || 'connecting…';
 }
 
 // Data-driven list of default medicine PDFs
@@ -192,7 +229,8 @@ const LIVE_DRUGS_URL = `${API_ORIGIN}/api/drugs`;
  */
 export async function fetchAvailableDrugs() {
   try {
-    const res = await fetch(LIVE_DRUGS_URL);
+    const uid = getUserId() || await resolveUserId() || 'anonymous';
+    const res = await fetch(`${LIVE_DRUGS_URL}?user_id=${encodeURIComponent(uid)}`);
     if (!res.ok) throw new Error(`status ${res.status}`);
     const data = await res.json();
     const drugs = (data.drugs || []).map(d => ({
@@ -219,7 +257,8 @@ export async function fetchAvailableDrugs() {
 export async function deleteMedicine(id, useLiveApi = true) {
   if (useLiveApi) {
     try {
-      const res = await fetch(`${API_ORIGIN}/api/drugs/${encodeURIComponent(id)}`, {
+      const uid = getUserId() || 'anonymous';
+      const res = await fetch(`${API_ORIGIN}/api/drugs/${encodeURIComponent(id)}?user_id=${encodeURIComponent(uid)}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -237,17 +276,31 @@ export async function deleteMedicine(id, useLiveApi = true) {
 /**
  * Upload one or more PDFs at once. Returns the list of registered medicines.
  */
+export const MAX_UPLOAD_MB = 100;   // keep in sync with backend MAX_UPLOAD_MB
+
 export async function uploadMedicinePdfs(files, useLiveApi = true) {
   const list = Array.from(files || []);
   const invalid = list.find(f => !f.name.toLowerCase().endsWith('.pdf'));
   if (invalid) throw new Error(`"${invalid.name}" is not a .pdf file.`);
   if (list.length === 0) throw new Error('No files selected.');
+  // Client-side size check for a fast, clear message.
+  const tooBig = list.find(f => f.size > MAX_UPLOAD_MB * 1024 * 1024);
+  if (tooBig) {
+    throw new Error(`"${tooBig.name}" is over the ${MAX_UPLOAD_MB} MB limit.`);
+  }
 
   if (useLiveApi) {
+    const uid = getUserId() || await resolveUserId() || 'anonymous';
     const formData = new FormData();
     list.forEach(f => formData.append('files', f));
+    formData.append('user_id', uid);
     const res = await fetch(LIVE_UPLOAD_URL, { method: 'POST', body: formData });
-    if (!res.ok) throw new Error(`Upload failed (status ${res.status})`);
+    if (!res.ok) {
+      // Surface the backend's specific reason (e.g. size/storage limit).
+      let detail = `Upload failed (status ${res.status})`;
+      try { const e = await res.json(); if (e.detail) detail = e.detail; } catch {}
+      throw new Error(detail);
+    }
     const data = await res.json();
     await fetchAvailableDrugs();
     return data.uploaded || [data];
@@ -368,6 +421,7 @@ export async function uploadMedicinePdf(file, useLiveApi = false) {
 export async function sendQuestion({ question, conversationHistory = [], selectedDrug = 'rinvoq', useLiveApi = false }) {
   if (useLiveApi) {
     try {
+      const uid = getUserId() || await resolveUserId();
       const response = await fetch(LIVE_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -375,7 +429,7 @@ export async function sendQuestion({ question, conversationHistory = [], selecte
           question,
           history: conversationHistory,
           drug_filter: selectedDrug,
-          user_id: getUserId()
+          user_id: uid
         })
       });
 

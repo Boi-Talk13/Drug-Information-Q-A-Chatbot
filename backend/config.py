@@ -72,6 +72,12 @@ USE_LLM = bool(AI_API_KEY) and AI_API_KEY.lower() not in {"put_your_key_here", "
 TOP_K = int(os.getenv("TOP_K", "5"))            # pieces sent to the AI
 MAX_CITATIONS = int(os.getenv("MAX_CITATIONS", "4"))
 
+# ---------------------------------------------------------------------------
+# Upload limits — keep storage (and cloud cost) bounded.
+# ---------------------------------------------------------------------------
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "100"))          # per single file
+MAX_USER_STORAGE_MB = int(os.getenv("MAX_USER_STORAGE_MB", "100"))  # per user total
+
 # Below this hybrid score we treat the top hit as "weak". We do not hard-refuse
 # on a weak hit; we give a correlated best-effort answer and say it is related,
 # not exact. We only hard-refuse when there is essentially nothing (see

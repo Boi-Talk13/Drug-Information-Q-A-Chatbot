@@ -1,3 +1,10 @@
+/**
+ * AssistantMessage — renders one bot answer.
+ * It scans the answer text for page markers like "[p. 8]" and turns each into a
+ * clickable Citation tag; clicking one opens the PDF at that page and highlights
+ * the sentence. Also shows the section, the medical-advice banner, and the list
+ * of verified source pages.
+ */
 import React, { useState } from 'react';
 import { ShieldCheck, AlertTriangle, BookOpen, Copy, Check, ExternalLink, Sparkles } from 'lucide-react';
 import Citation from './Citation';

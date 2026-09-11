@@ -1,3 +1,9 @@
+/**
+ * MedicineListModal — the "Medicine PDF Library" popup.
+ * Lists THIS user's uploaded PDFs, lets them upload one or many at once,
+ * select one for Q&A, or delete one. All actions call the backend scoped by
+ * user_id so each user manages only their own private library.
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react';
 import { getAvailableDrugs, fetchAvailableDrugs, uploadMedicinePdfs, deleteMedicine } from '../services/apiService';
@@ -196,6 +202,7 @@ export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose,
         }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             Total Loaded PDFs: <strong style={{ color: 'var(--text-primary)' }}>{medicines.length}</strong>
+            <span style={{ color: 'var(--text-muted)', marginLeft: '10px' }}>· max 100 MB per file</span>
           </div>
 
           <button

@@ -1,3 +1,8 @@
+/**
+ * Citation — the small clickable "[p. N]" tag shown inside an answer.
+ * On click it tells the PDF viewer which page (and which answer sentence) to
+ * open and highlight. Hovering shows the source, section and a text preview.
+ */
 import React from 'react';
 import { BookOpen } from 'lucide-react';
 

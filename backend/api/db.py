@@ -16,6 +16,7 @@ share across threads without it.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 import time
@@ -116,6 +117,36 @@ def _init_schema() -> None:
                 ts REAL, user_id TEXT, drug TEXT, question TEXT,
                 answer TEXT, citations TEXT, is_refusal INTEGER
             )""")
+    # answer_cache: same question (per user + drug) -> same saved answer.
+    if _backend == "postgres":
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS answer_cache (
+                user_id TEXT, drug TEXT, qnorm TEXT, result TEXT, ts DOUBLE PRECISION,
+                PRIMARY KEY (user_id, drug, qnorm)
+            )""")
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS answer_cache (
+                user_id TEXT, drug TEXT, qnorm TEXT, result TEXT, ts REAL,
+                PRIMARY KEY (user_id, drug, qnorm)
+            )""")
+    # users: maps a browser token -> a short, sequential id (user-101, 102, ...)
+    if _backend == "postgres":
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                seq SERIAL PRIMARY KEY,
+                token TEXT UNIQUE,
+                user_id TEXT,
+                created_at DOUBLE PRECISION
+            )""")
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT UNIQUE,
+                user_id TEXT,
+                created_at REAL
+            )""")
         # Older SQLite files may predate user_id — add it if missing.
         try:
             cols = [r[1] for r in cur.execute("PRAGMA table_info(answers)").fetchall()]
@@ -130,6 +161,83 @@ def _init_schema() -> None:
     except Exception:
         pass
     _conn.commit() if _backend == "sqlite" else None
+
+
+# ---------------------------------------------------------------------------
+# Users — map a per-browser token to a short sequential id (user-101, 102, ...)
+# ---------------------------------------------------------------------------
+def resolve_user(token: str) -> str:
+    """Return the short id for this browser token, assigning the next number
+    (user-101, user-102, ...) the first time we see it."""
+    if not token:
+        return "user-000"
+    try:
+        with _lock:
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute(_q("SELECT user_id FROM users WHERE token = ?"), (token,))
+            row = cur.fetchone()
+            if row and row[0]:
+                return row[0]
+            # Insert new; seq auto-increments, short id = user-(100+seq).
+            if _backend == "postgres":
+                cur.execute(_q("INSERT INTO users (token, created_at) VALUES (?, ?) "
+                               "ON CONFLICT (token) DO NOTHING"), (token, time.time()))
+            else:
+                cur.execute(_q("INSERT OR IGNORE INTO users (token, created_at) VALUES (?, ?)"),
+                            (token, time.time()))
+                conn.commit()
+            cur.execute(_q("SELECT seq FROM users WHERE token = ?"), (token,))
+            seq = cur.fetchone()[0]
+            short = f"user-{100 + int(seq)}"
+            cur.execute(_q("UPDATE users SET user_id = ? WHERE token = ?"), (short, token))
+            if _backend == "sqlite":
+                conn.commit()
+            return short
+    except Exception as e:
+        print(f"[db] resolve_user failed: {e}")
+        return "user-000"
+
+
+# ---------------------------------------------------------------------------
+# Answer cache — same question, same answer (and instant, no Groq call)
+# ---------------------------------------------------------------------------
+def _qnorm(q: str) -> str:
+    return re.sub(r"[^a-z0-9 ]+", " ", (q or "").lower())
+
+
+def get_cached_answer(user_id: str, drug: Optional[str], question: str) -> Optional[Dict]:
+    try:
+        with _lock:
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute(_q("SELECT result FROM answer_cache WHERE user_id=? AND drug=? AND qnorm=?"),
+                        (user_id, drug or "", _qnorm(question)))
+            row = cur.fetchone()
+        return json.loads(row[0]) if row and row[0] else None
+    except Exception as e:
+        print(f"[db] get_cached_answer failed: {e}")
+        return None
+
+
+def cache_answer(user_id: str, drug: Optional[str], question: str, result: Dict) -> None:
+    try:
+        with _lock:
+            conn = _connect()
+            cur = conn.cursor()
+            blob = json.dumps(result)
+            if _backend == "postgres":
+                cur.execute(_q(
+                    "INSERT INTO answer_cache (user_id, drug, qnorm, result, ts) VALUES (?,?,?,?,?) "
+                    "ON CONFLICT (user_id, drug, qnorm) DO UPDATE SET result=EXCLUDED.result, ts=EXCLUDED.ts"),
+                    (user_id, drug or "", _qnorm(question), blob, time.time()))
+            else:
+                cur.execute(_q(
+                    "INSERT OR REPLACE INTO answer_cache (user_id, drug, qnorm, result, ts) VALUES (?,?,?,?,?)"),
+                    (user_id, drug or "", _qnorm(question), blob, time.time()))
+                conn.commit()
+    except Exception as e:
+        print(f"[db] cache_answer failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +304,28 @@ def get_history(user_id: str, limit: int = 50) -> List[Dict]:
     except Exception as e:
         print(f"[db] get_history failed: {e}")
         return []
+
+
+def get_history_by_day(user_id: str, limit: int = 100) -> List[Dict]:
+    """Same history, but grouped into Today / Yesterday / older dates."""
+    import datetime as _dt
+    rows = get_history(user_id, limit)
+    today = _dt.date.today()
+    groups: Dict[str, List[Dict]] = {}
+    order: List[str] = []
+    for r in rows:
+        d = _dt.date.fromtimestamp(r["ts"]) if r.get("ts") else today
+        if d == today:
+            label = "Today"
+        elif d == today - _dt.timedelta(days=1):
+            label = "Yesterday"
+        else:
+            label = d.strftime("%d %b %Y")
+        if label not in groups:
+            groups[label] = []
+            order.append(label)
+        groups[label].append({"question": r["question"], "answer": r["answer"]})
+    return [{"day": lbl, "count": len(groups[lbl]), "items": groups[lbl]} for lbl in order]
 
 
 def stats(user_id: Optional[str] = None) -> Dict:
