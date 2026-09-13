@@ -17,6 +17,7 @@ import sys
 import requests
 
 from . import config
+
 from .search.index import build_index
 
 SAMPLES = {
@@ -53,6 +54,8 @@ def main() -> None:
     else:
         print("No PDFs downloaded. Check your network or add PDFs manually.")
         sys.exit(1)
+
+
 
 
 if __name__ == "__main__":
