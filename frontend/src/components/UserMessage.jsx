@@ -1,3 +1,7 @@
+/**
+ * UserMessage — one question bubble from the user, shown on the right of the
+ * chat with the time it was sent.
+ */
 import React from 'react';
 import { User } from 'lucide-react';
 
@@ -39,9 +43,9 @@ export default function UserMessage({ message, timestamp }) {
           boxShadow: 'var(--shadow-sm)'
         }}>
           <p style={{
-            fontSize: '0.95rem',
+            fontSize: '1.06rem',
             color: 'var(--text-primary)',
-            lineHeight: 1.5,
+            lineHeight: 1.55,
             whiteSpace: 'pre-wrap',
             fontWeight: 450
           }}>
@@ -49,7 +53,7 @@ export default function UserMessage({ message, timestamp }) {
           </p>
           {timestamp && (
             <div style={{
-              fontSize: '0.7rem',
+              fontSize: '0.75rem',
               color: 'var(--text-muted)',
               marginTop: '4px',
               textAlign: 'right'

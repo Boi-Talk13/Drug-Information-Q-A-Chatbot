@@ -36,6 +36,13 @@ _EXPANSIONS = {
     r"\bbreast[- ]?feed(ing)?\b": "lactation nursing",
     r"\bstore|storage\b": "how supplied storage handling",
     r"\boverdose\b": "overdosage",
+    # Lay ways of asking about taking too much — users rarely type "overdose".
+    # e.g. "what if i take 5 tablets in a day", "took too many pills".
+    r"\b\d+\s*(tablets?|capsules?|pills?|doses?)\b": "overdosage maximum recommended dosage",
+    r"\btoo (many|much)\b": "overdosage maximum recommended dosage",
+    r"\bextra (dose|tablet|capsule|pill)\b": "overdosage missed dose",
+    r"\bdouble (dose|dosing|up)\b": "overdosage maximum recommended dosage",
+    r"\bmore than (the )?(recommended|prescribed)\b": "overdosage maximum recommended dosage",
     r"\bcontraindicat(ed|ion|ions)?\b": "contraindications should not",
     r"\bshould not (take|use)\b": "contraindications",
     r"\bmissed dose\b": "missed dose administration",

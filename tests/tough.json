@@ -1,0 +1,546 @@
+{
+ "note": "Labeled question set for tests/evaluate.py. 'expect' is answer or refuse. gold_pages are NOT written by hand: tests/build_answer_keys.py builds them from gold_sections (every page that label section covers) or gold_text (every PDF page whose real text matches the fact). Nothing is taken from MedCite's answers. Do not tune the system against these sets; add new questions instead.",
+ "questions": [
+  {
+   "id": "rin-vaccine",
+   "drug": "drug",
+   "expect": "answer",
+   "question": "can i get a live vaccine while on rinvoq?",
+   "gold_pages": [
+    2,
+    17,
+    77,
+    80
+   ],
+   "gold_text": "live vaccine"
+  },
+  {
+   "id": "rin-grapefruit",
+   "drug": "drug",
+   "expect": "answer",
+   "question": "is it ok to eat grapefruit with RINVOQ",
+   "gold_pages": [
+    31,
+    77,
+    81
+   ],
+   "gold_text": "grapefruit"
+  },
+  {
+   "id": "rin-liver",
+   "drug": "drug",
+   "expect": "answer",
+   "question": "what if a patient has severe liver problems, can they use RINVOQ?",
+   "gold_pages": [
+    2,
+    7,
+    11,
+    36,
+    40
+   ],
+   "gold_text": "Child-Pugh C|severe hepatic impairment"
+  },
+  {
+   "id": "hum-fridge",
+   "drug": "humira_medguide",
+   "expect": "answer",
+   "question": "how do i store humira, can i freeze it?",
+   "gold_pages": [
+    5
+   ],
+   "gold_text": "refrigerat|do not freeze"
+  },
+  {
+   "id": "hum-latex",
+   "drug": "humira_medguide",
+   "expect": "answer",
+   "question": "im allergic to latex is the humira pen safe for me",
+   "gold_pages": [
+    2,
+    3
+   ],
+   "gold_text": "latex"
+  },
+  {
+   "id": "hum-tb",
+   "drug": "humira_medguide",
+   "expect": "answer",
+   "question": "why do i need a TB test before starting humira",
+   "gold_pages": [
+    1,
+    3,
+    4
+   ],
+   "gold_text": "tuberculosis|\\bTB\\b"
+  },
+  {
+   "id": "cui-reuse",
+   "drug": "cui_injection_dfu",
+   "expect": "answer",
+   "question": "can the injection port be reused after it is explanted?",
+   "gold_pages": [
+    7,
+    8,
+    14
+   ],
+   "gold_text": "\\breuse|single use"
+  },
+  {
+   "id": "cui-contra",
+   "drug": "cui_injection_dfu",
+   "expect": "answer",
+   "question": "who shouldnt get the remote injection port",
+   "gold_pages": [
+    5
+   ],
+   "gold_text": "Open cuts or sores|Systemic disorders such as diabetes"
+  },
+  {
+   "id": "cui-warranty",
+   "drug": "cui_injection_dfu",
+   "expect": "answer",
+   "question": "what does the warranty cover for this device",
+   "gold_pages": [
+    12
+   ],
+   "gold_text": "defective when shipped|warranty is in lieu"
+  },
+  {
+   "id": "lin-missed",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "i forgot to take my linzess dose what now",
+   "gold_pages": [
+    2,
+    25,
+    27
+   ],
+   "gold_text": "\\bmiss(ed)? (a )?dose|missed dose"
+  },
+  {
+   "id": "lin-toddler",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "can a 1 year old child take linzess",
+   "gold_pages": [
+    1,
+    2,
+    4,
+    10,
+    11,
+    25,
+    27
+   ],
+   "gold_text": "(less than|younger than|under) 2 years"
+  },
+  {
+   "id": "lin-food",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "shud linzess be taken with food or on an empty stomach",
+   "gold_pages": [
+    1,
+    2,
+    5,
+    6,
+    13,
+    25,
+    27
+   ],
+   "gold_text": "empty stomach|30 minutes before"
+  },
+  {
+   "id": "syn-food",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "which foods or drinks mess with synthroid absorption",
+   "gold_pages": [
+    4,
+    13,
+    17
+   ],
+   "gold_text": "soybean|grapefruit|walnut|dietary fiber"
+  },
+  {
+   "id": "syn-weightloss",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "can synthroid be used to lose weight",
+   "gold_pages": [
+    1,
+    3,
+    9
+   ],
+   "gold_text": "obesity|weight (loss|reduction)"
+  },
+  {
+   "id": "syn-calcium",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "how long should i wait between synthroid and calcium or iron pills",
+   "gold_pages": [
+    1,
+    3,
+    10,
+    19
+   ],
+   "gold_text": "\\b4 hours"
+  },
+  {
+   "id": "avy-kidney",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "does the avycaz dose change for people with kidney problems",
+   "gold_pages": [
+    1,
+    2,
+    3,
+    5,
+    9,
+    10
+   ],
+   "gold_text": "creatinine clearance"
+  },
+  {
+   "id": "avy-penicillin",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "patient is allergic to penicillin, can they be given avycaz",
+   "gold_pages": [
+    1,
+    9,
+    22
+   ],
+   "gold_text": "penicillin"
+  },
+  {
+   "id": "avy-seizure",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "can avycaz cause seizures",
+   "gold_pages": [
+    1,
+    10,
+    13,
+    32
+   ],
+   "gold_text": "seizure"
+  },
+  {
+   "id": "ubr-2nd",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "can i take a 2nd ubrelvy if my headache comes back",
+   "gold_pages": [
+    1,
+    2,
+    12
+   ],
+   "gold_text": "second dose"
+  },
+  {
+   "id": "ubr-max",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "whats the most ubrelvy i can take in 24 hours",
+   "gold_pages": [
+    1,
+    2,
+    6,
+    11
+   ],
+   "gold_text": "200 mg"
+  },
+  {
+   "id": "ubr-grapefruit",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "grapefruit juice with ubrelvy is that ok",
+   "gold_pages": [
+    5,
+    15,
+    16
+   ],
+   "gold_text": "grapefruit"
+  },
+  {
+   "id": "fet-maoi",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "can fetzima be taken together with an MAOI",
+   "gold_pages": [
+    1,
+    2,
+    4,
+    5,
+    6,
+    13,
+    26,
+    29,
+    30
+   ],
+   "gold_text": "\\bMAOIs?\\b"
+  },
+  {
+   "id": "fet-alcohol",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "is drinking alcohol ok while on fetzima",
+   "gold_pages": [
+    14,
+    21,
+    27,
+    30,
+    31
+   ],
+   "gold_text": "alcohol"
+  },
+  {
+   "id": "fet-peeing",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "i have trouble peeing on fetzima, is that a known effect",
+   "gold_pages": [
+    1,
+    2,
+    9,
+    10,
+    11,
+    12,
+    26
+   ],
+   "gold_text": "urinary (hesitation|retention)"
+  },
+  {
+   "id": "ela-drops",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "what eye drops do patients need to use with elahere",
+   "gold_pages": [
+    1,
+    3,
+    7,
+    22,
+    24
+   ],
+   "gold_text": "eye drops|lubricating"
+  },
+  {
+   "id": "ela-lungs",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "can elahere cause inflammation of the lungs",
+   "gold_pages": [
+    1,
+    4,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    22,
+    25
+   ],
+   "gold_text": "pneumonitis"
+  },
+  {
+   "id": "ela-weight",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "how is the elahere dose worked out from body weight",
+   "gold_pages": [
+    1,
+    2,
+    16,
+    18,
+    21
+   ],
+   "gold_text": "adjusted ideal body weight"
+  },
+  {
+   "id": "emb-renal",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "how is emblaveo adjusted when creatinine clearance is low",
+   "gold_pages": [
+    1,
+    2,
+    3,
+    8,
+    13
+   ],
+   "gold_text": "creatinine clearance"
+  },
+  {
+   "id": "emb-cdiff",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "can emblaveo give you c diff diarrhea",
+   "gold_pages": [
+    1,
+    2,
+    7,
+    8,
+    9
+   ],
+   "gold_text": "Clostridioides difficile"
+  },
+  {
+   "id": "emb-infusion",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "how long does an emblaveo infusion take",
+   "gold_pages": [
+    3,
+    8,
+    15
+   ],
+   "gold_text": "over 3 hours"
+  },
+  {
+   "id": "bet-asthma",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "is betagan ok if i have asthma",
+   "gold_pages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "gold_text": "asthma"
+  },
+  {
+   "id": "bet-contacts",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "can i wear contact lenses when using betagan",
+   "gold_pages": [
+    4
+   ],
+   "gold_text": "contact lens"
+  },
+  {
+   "id": "bet-drops",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "how many drops of betagan should go in the eye",
+   "gold_pages": [
+    2,
+    7
+   ],
+   "gold_text": "one drop"
+  },
+  {
+   "id": "kta-crush",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "can i crush or chew k-tab tablets",
+   "gold_pages": [
+    2,
+    7
+   ],
+   "gold_text": "\\bcrush|\\bchew"
+  },
+  {
+   "id": "kta-meals",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "shud k-tab be taken with meals",
+   "gold_pages": [
+    1,
+    2,
+    7
+   ],
+   "gold_text": "with meals"
+  },
+  {
+   "id": "kta-highk",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "what are the signs of too much potassium",
+   "gold_pages": [
+    1,
+    3,
+    4,
+    5
+   ],
+   "gold_text": "hyperkalemia"
+  },
+  {
+   "id": "ble-shake",
+   "drug": "blephamide_suspension",
+   "expect": "answer",
+   "question": "do i need to shake blephamide before using it",
+   "gold_pages": [
+    6
+   ],
+   "gold_text": "\\bshake"
+  },
+  {
+   "id": "ble-contacts",
+   "drug": "blephamide_suspension",
+   "expect": "answer",
+   "question": "are contact lenses ok with blephamide",
+   "gold_pages": [
+    4
+   ],
+   "gold_text": "contact lens"
+  },
+  {
+   "id": "ble-pressure",
+   "drug": "blephamide_suspension",
+   "expect": "answer",
+   "question": "can blephamide raise the pressure inside my eye",
+   "gold_pages": [
+    2,
+    3,
+    5
+   ],
+   "gold_text": "intraocular pressure"
+  },
+  {
+   "id": "ood3-biryani",
+   "drug": "linzess",
+   "expect": "refuse",
+   "question": "how do i cook chicken biryani",
+   "gold_pages": []
+  },
+  {
+   "id": "ood3-potter",
+   "drug": "synthroid",
+   "expect": "refuse",
+   "question": "who wrote harry potter",
+   "gold_pages": []
+  },
+  {
+   "id": "ood3-french",
+   "drug": "avycaz",
+   "expect": "refuse",
+   "question": "translate good morning into french",
+   "gold_pages": []
+  },
+  {
+   "id": "ood3-rome",
+   "drug": "fetzima",
+   "expect": "refuse",
+   "question": "explain the history of the roman empire",
+   "gold_pages": []
+  },
+  {
+   "id": "ood3-laptop",
+   "drug": "ubrelvy",
+   "expect": "refuse",
+   "question": "which laptop is best for engineering students",
+   "gold_pages": []
+  },
+  {
+   "id": "ood3-math",
+   "drug": "elahere",
+   "expect": "refuse",
+   "question": "what is 25 times 17",
+   "gold_pages": []
+  }
+ ]
+}

@@ -55,7 +55,10 @@ def find_pdf_files() -> tuple[list[Path], list[Path]]:
     valid_files = []
     invalid_files = []
 
-    for path in sorted(config.PDF_DIR.glob("*.pdf")):
+    # PDFs live in owner folders: data/pdfs/shared/ (the built-in library) and
+    # data/pdfs/<user-id>/ (private uploads). Search subfolders too — a
+    # top-level-only glob finds none of them and skips building the index.
+    for path in sorted(config.PDF_DIR.rglob("*.pdf")):
         if is_valid_pdf(path):
             valid_files.append(path)
         else:

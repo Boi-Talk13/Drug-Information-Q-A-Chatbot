@@ -68,6 +68,7 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
   const [currentPage, setCurrentPage] = useState(activeCitation?.page || 1);
   const [pageInput, setPageInput] = useState(String(activeCitation?.page || 1));
   const [loadError, setLoadError] = useState(false);
+  const loadedUrlRef = useRef(null);
   const [width, setWidth] = useState(400);
   const [zoom, setZoom] = useState(1.35);   // pages start a bit larger for readability
   const pageWidth = Math.round(width * zoom);
@@ -134,8 +135,10 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
     }
   }, [activeCitation, numPages, scrollToPage]);
 
-  // Reset when the document changes.
+  // Reset when the document changes. loadedUrlRef marks which URL is current,
+  // so a slow failure from an earlier PDF can be ignored (see onLoadError).
   useEffect(() => {
+    loadedUrlRef.current = pdfUrl;
     setNumPages(null);
     setLoadError(false);
     pageRefs.current = {};
@@ -386,7 +389,9 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
             file={fileProp}
             options={options}
             onLoadSuccess={onDocLoad}
-            onLoadError={() => setLoadError(true)}
+            // Only trust an error that belongs to the document we're showing
+            // now — a previous PDF's late failure must not blank a good one.
+            onLoadError={() => { if (loadedUrlRef.current === pdfUrl) setLoadError(true); }}
             loading={<div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', padding: 40, color: 'var(--text-secondary)' }}><Loader2 size={18} className="spin" /> Loading PDF…</div>}
           >
             {numPages && Array.from({ length: numPages }, (_, i) => i + 1).map((p) => {

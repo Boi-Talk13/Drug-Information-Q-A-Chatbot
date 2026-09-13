@@ -20,6 +20,7 @@ import re
 import sqlite3
 import threading
 import time
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from .. import config
@@ -130,6 +131,13 @@ def _init_schema() -> None:
                 user_id TEXT, drug TEXT, qnorm TEXT, result TEXT, ts REAL,
                 PRIMARY KEY (user_id, drug, qnorm)
             )""")
+    # daily_usage: AI-written answers each user got per day (the daily limit).
+    # Same SQL on both databases.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS daily_usage (
+            user_id TEXT, day TEXT, ai_answers INTEGER,
+            PRIMARY KEY (user_id, day)
+        )""")
     # users: maps a browser token -> a short, sequential id (user-101, 102, ...)
     if _backend == "postgres":
         cur.execute("""
@@ -202,8 +210,30 @@ def resolve_user(token: str) -> str:
 # ---------------------------------------------------------------------------
 # Answer cache — same question, same answer (and instant, no Groq call)
 # ---------------------------------------------------------------------------
+def _index_sig() -> str:
+    """A short fingerprint of the current search index.
+
+    It is part of every cache key, so rebuilding the index (new PDFs, changed
+    chunking) automatically misses the old entries instead of serving an answer
+    that the current index would no longer produce.
+    """
+    try:
+        from .. import config
+        st = config.INDEX_FILE.stat()
+        return f"{int(st.st_mtime)}-{st.st_size}"
+    except Exception:
+        return "0"
+
+
 def _qnorm(q: str) -> str:
-    return re.sub(r"[^a-z0-9 ]+", " ", (q or "").lower())
+    # Lowercase, strip punctuation, then apply the same typo dictionary the
+    # search layer uses. This means "pregent women..." and "pregnant women..."
+    # hit the same cache key — one good answer is reused for typo variants.
+    # The index fingerprint is prefixed so a rebuild invalidates stale answers.
+    from ..search.spellfix import COMMON_FIXES
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", (q or "").lower())
+    words = [COMMON_FIXES.get(w, w) for w in cleaned.split()]
+    return f"{_index_sig()}|" + " ".join(words).strip()
 
 
 def get_cached_answer(user_id: str, drug: Optional[str], question: str) -> Optional[Dict]:
@@ -238,6 +268,82 @@ def cache_answer(user_id: str, drug: Optional[str], question: str, result: Dict)
                 conn.commit()
     except Exception as e:
         print(f"[db] cache_answer failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Per-user daily limit — only answers the AI actually writes are counted
+# ---------------------------------------------------------------------------
+def _today() -> str:
+    """Today's date in USAGE_TIMEZONE, so the limit resets at local midnight
+    (a server on UTC would otherwise reset it at 5:30 AM in India)."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(config.USAGE_TIMEZONE)).strftime("%Y-%m-%d")
+    except Exception:
+        return time.strftime("%Y-%m-%d")
+
+
+def usage_today(user_id: str) -> int:
+    """How many AI-written answers this user has had today."""
+    try:
+        with _lock:
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute(_q("SELECT ai_answers FROM daily_usage WHERE user_id=? AND day=?"),
+                        (user_id, _today()))
+            row = cur.fetchone()
+        return int(row[0]) if row else 0
+    except Exception as e:
+        print(f"[db] usage_today failed: {e}")
+        return 0
+
+
+def reserve_ai_answer(user_id: str, limit: int) -> bool:
+    """Take one of today's AI answers for this user, if any are left.
+
+    Reserving BEFORE the AI call — and releasing it afterwards if the AI was
+    not used — keeps the limit exact even when one user sends several
+    questions at once, because the check and the increment happen together
+    under the lock.
+    """
+    try:
+        with _lock:
+            conn = _connect()
+            cur = conn.cursor()
+            day = _today()
+            cur.execute(_q("SELECT ai_answers FROM daily_usage WHERE user_id=? AND day=?"),
+                        (user_id, day))
+            row = cur.fetchone()
+            if row and int(row[0]) >= limit:
+                return False
+            if row:
+                cur.execute(_q("UPDATE daily_usage SET ai_answers = ai_answers + 1 "
+                               "WHERE user_id=? AND day=?"), (user_id, day))
+            else:
+                cur.execute(_q("INSERT INTO daily_usage (user_id, day, ai_answers) VALUES (?,?,1)"),
+                            (user_id, day))
+            if _backend == "sqlite":
+                conn.commit()
+            return True
+    except Exception as e:
+        # A broken counter must never lock everyone out of the app.
+        print(f"[db] reserve_ai_answer failed: {e}")
+        return True
+
+
+def release_ai_answer(user_id: str) -> None:
+    """Give back a reserved answer that ended up not using the AI
+    (a greeting, a refusal, or the backup writer)."""
+    try:
+        with _lock:
+            conn = _connect()
+            conn.cursor().execute(_q(
+                "UPDATE daily_usage SET ai_answers = ai_answers - 1 "
+                "WHERE user_id=? AND day=? AND ai_answers > 0"), (user_id, _today()))
+            if _backend == "sqlite":
+                conn.commit()
+    except Exception as e:
+        print(f"[db] release_ai_answer failed: {e}")
 
 
 # ---------------------------------------------------------------------------

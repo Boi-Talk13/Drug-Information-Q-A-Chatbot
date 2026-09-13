@@ -6,6 +6,7 @@ Endpoints (matching what the React frontend calls):
   POST /api/upload  multipart file=<pdf>             -> {id, name, pages}
   GET  /api/drugs                                     -> indexed medicines
   GET  /api/health                                    -> status + mode
+  GET  /api/usage   ?user_id=                         -> today's questions left
 
 The retriever is loaded once and cached. Uploading a new PDF rebuilds the index
 and refreshes the cache, so a new medicine works straight away.
@@ -23,10 +24,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .. import config
+from ..ai_answer import safety
 from ..ai_answer.answer import answer_question
-from ..pdf_reader.reader import drug_id_from_filename
+from ..pdf_reader.reader import drug_id_from_filename, read_pdf
+from ..pdf_reader.validator import looks_like_drug_label
+from ..sources.rxabbvie import catalog_size, verify_upload
 from ..search.hybrid import Retriever
-from ..search.index import add_or_replace_pdf, build_index, remove_drug
+from ..search.index import add_or_replace_pdf_doc, build_index, remove_drug
 from . import db
 
 app = FastAPI(title="MedCite API", version="1.0.0")
@@ -107,19 +111,30 @@ def health() -> dict:
 
 @app.get("/api/drugs")
 def drugs(user_id: str = "anonymous") -> dict:
-    """Only this user's own uploaded PDFs (fully private libraries)."""
+    """The shared built-in library (visible to everyone) plus this user's own
+    uploads. Another user's private PDFs are never included."""
     r = get_retriever()
-    return {"drugs": r.documents_for(user_id)}
+    docs = r.documents_for(user_id)
+    return {
+        "drugs": [{**d, "shared": d.get("owner") == config.SHARED_OWNER} for d in docs],
+        # Uploading is open to everyone, but only for a PDF whose official
+        # RxAbbVie link the user can supply. The UI uses this to explain the
+        # rule; the real enforcement is in /api/upload.
+        "uploads_open": True,
+        "source_host": "www.rxabbvie.com",
+        "source_catalog_size": catalog_size(),
+    }
 
 
 @app.get("/api/pdf/{drug_id}")
 def get_pdf(drug_id: str, user_id: str = "anonymous") -> FileResponse:
-    """Serve the raw PDF — only if it belongs to this user."""
+    """Serve the raw PDF — from the shared library, or this user's own upload."""
     r = get_retriever()
     doc = r.document(drug_id, user_id)
     if not doc:
         raise HTTPException(status_code=404, detail="No PDF for this drug")
-    path = config.PDF_DIR / user_id / doc["filename"]
+    # Read it from whichever library it actually lives in.
+    path = config.PDF_DIR / doc.get("owner", user_id) / doc["filename"]
     if not path.exists():
         raise HTTPException(status_code=404, detail="PDF file not found on disk")
     return FileResponse(
@@ -135,32 +150,66 @@ def chat(req: ChatRequest) -> dict:
         raise HTTPException(status_code=400, detail="question is required")
     r = get_retriever()
     uid = req.user_id or "anonymous"
+    history = [t.model_dump() for t in req.history]
 
-    # Same self-contained question again -> return the saved answer (consistent
-    # and instant, no repeated Groq call). Short follow-ups depend on the chat
-    # context, so we don't cache those.
-    cacheable = len(req.question.split()) >= 4
+    # Saved answers. A question asked before is answered from the database:
+    # instant, no Groq call, and it does not count toward the daily limit.
+    #  * Built-in (shared) medicines: everyone reads the same PDF, so one saved
+    #    answer serves EVERY user who asks the same question.
+    #  * A user's own uploaded PDF: its saved answers stay private to them.
+    #  * Follow-ups ("and for children?") depend on the earlier chat, and very
+    #    short questions are too vague, so neither is served from the cache.
+    doc = r.document(req.drug_filter, uid) if req.drug_filter else None
+    shared = bool(doc) and doc.get("owner") == config.SHARED_OWNER
+    cache_scope = config.SHARED_OWNER if shared else uid
+    is_followup = safety.rewrite_followup(req.question, history) != req.question
+    cacheable = len(req.question.split()) >= 4 and not is_followup
     if cacheable:
-        cached = db.get_cached_answer(uid, req.drug_filter, req.question)
+        cached = db.get_cached_answer(cache_scope, req.drug_filter, req.question)
         if cached:
+            cached = {**cached, "from_cache": True}
             db.log_answer(req.question, req.drug_filter, cached, 0, user_id=uid)
-            return cached
+            db.save_chat(uid, req.drug_filter, req.question, cached)
+            return {**cached, "usage": _usage(uid)}
+
+    # Daily limit: reserve one AI answer up front, and give it back if the AI
+    # ends up not being used (greeting, refusal, or the backup writer).
+    reserved = db.reserve_ai_answer(uid, config.DAILY_QUESTION_LIMIT)
 
     start = time.perf_counter()
     result = answer_question(
         question=req.question,
-        history=[t.model_dump() for t in req.history],
+        history=history,
         drug_filter=req.drug_filter,
         retriever=r,
         user_id=uid,
+        llm_allowed=reserved,
     )
     latency_ms = int((time.perf_counter() - start) * 1000)
+    if reserved and result.get("answer_mode") != "llm":
+        db.release_ai_answer(uid)
+
     # Per-user records: the user_id keeps each person's data separate.
     db.log_answer(req.question, req.drug_filter, result, latency_ms, user_id=uid)
     db.save_chat(uid, req.drug_filter, req.question, result)
-    if cacheable and not result.get("is_refusal"):
-        db.cache_answer(uid, req.drug_filter, req.question, result)
-    return result
+    # Only cache answers the AI wrote. A backup-writer answer saved here would
+    # keep being served to everyone long after the AI is available again.
+    if cacheable and not result.get("is_refusal") and result.get("answer_mode") == "llm":
+        db.cache_answer(cache_scope, req.drug_filter, req.question, result)
+    return {**result, "usage": _usage(uid)}
+
+
+def _usage(uid: str) -> dict:
+    """Today's AI-answer allowance for one user."""
+    used = db.usage_today(uid)
+    limit = config.DAILY_QUESTION_LIMIT
+    return {"used": used, "limit": limit, "remaining": max(0, limit - used)}
+
+
+@app.get("/api/usage")
+def usage(user_id: str = "anonymous") -> dict:
+    """How many of today's questions this user has left."""
+    return _usage(user_id)
 
 
 @app.get("/api/stats")
@@ -183,10 +232,30 @@ def history(user_id: str, limit: int = 50) -> dict:
 
 
 @app.post("/api/upload")
-async def upload(files: List[UploadFile] = File(...), user_id: str = Form("anonymous")) -> dict:
-    """Upload one or more PDFs into THIS user's private library. Each file is
-    parsed on its own (fast) and stored under data/pdfs/<user_id>/."""
-    owner_dir = config.PDF_DIR / user_id
+async def upload(
+    files: List[UploadFile] = File(...),
+    user_id: str = Form("anonymous"),
+    source_url: str = Form(""),
+) -> dict:
+    """Add a drug-label PDF, verified against its official RxAbbVie source.
+
+    The library is not open to arbitrary files. Every upload passes four gates:
+      1. SOURCE  — the pasted link is on rxabbvie.com (see sources/rxabbvie.py).
+      2. CATALOG — it names one of the PDFs actually published on that site.
+      3. NAME    — the chosen file matches the file the link names, so a valid
+                   link cannot be used to bring in some other document.
+      4. CONTENT — the file still has to parse as prescribing information, or it
+                   is rejected and deleted (see validator.py).
+
+    One link identifies one PDF, so exactly one file may be uploaded at a time.
+    """
+    if len(files) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Upload one PDF at a time — each file needs its own RxAbbVie link.")
+
+    owner = user_id
+    owner_dir = config.PDF_DIR / owner
     owner_dir.mkdir(parents=True, exist_ok=True)
 
     max_bytes = config.MAX_UPLOAD_MB * 1024 * 1024
@@ -197,6 +266,13 @@ async def upload(files: List[UploadFile] = File(...), user_id: str = Form("anony
     for file in files:
         if not file.filename or not file.filename.lower().endswith(".pdf"):
             continue
+
+        # Gates 1-3: the link must be a real RxAbbVie PDF and must name THIS
+        # file. Checked before anything is written to disk.
+        ok, why, _ = verify_upload(source_url, file.filename)
+        if not ok:
+            raise HTTPException(status_code=403, detail=why)
+
         data = await file.read()
         size = len(data)
         # 1) per-file limit
@@ -217,12 +293,26 @@ async def upload(files: List[UploadFile] = File(...), user_id: str = Form("anony
 
         dest = owner_dir / Path(file.filename).name
         dest.write_bytes(data)
-        meta = add_or_replace_pdf(dest, owner=user_id)     # parse only this file
+
+        # Parse once, then confirm this is really a medicine's prescribing
+        # information before it's added to the user's library — rejects
+        # resumes, invoices, or any unrelated PDF with a clear reason why.
+        parsed = read_pdf(dest)
+        is_valid, reason = looks_like_drug_label(parsed)
+        if not is_valid:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=422,
+                detail=f'"{file.filename}" was not added. {reason}')
+
+        meta = add_or_replace_pdf_doc(parsed, owner=owner)   # no re-parsing
+        meta["source_url"] = source_url.strip()
         saved.append({
             "id": meta["drug_id"],
             "name": meta["title"],
             "pages": meta["pages"],
             "num_chunks": meta["num_chunks"],
+            "shared": owner == config.SHARED_OWNER,
         })
 
     if not saved:
@@ -233,14 +323,25 @@ async def upload(files: List[UploadFile] = File(...), user_id: str = Form("anony
 
 
 @app.delete("/api/drugs/{drug_id}")
-def delete_drug(drug_id: str, user_id: str = "anonymous") -> dict:
-    """Delete one of THIS user's medicines (index entry + their PDF file)."""
+def delete_drug(drug_id: str, user_id: str = "anonymous", admin_key: str = "") -> dict:
+    """Delete a medicine. A user can only delete their OWN upload — the shared
+    built-in library is read-only unless the admin key is supplied."""
     r = get_retriever()
     doc = r.document(drug_id, user_id)
-    removed = remove_drug(drug_id, owner=user_id)
+    if doc and doc.get("owner") == config.SHARED_OWNER:
+        if admin_key != config.ADMIN_KEY:
+            raise HTTPException(
+                status_code=403,
+                detail="This medicine is part of the shared built-in library and "
+                       "cannot be deleted.")
+        owner = config.SHARED_OWNER
+    else:
+        owner = user_id
+
+    removed = remove_drug(drug_id, owner=owner)
     if doc:
         try:
-            (config.PDF_DIR / user_id / doc["filename"]).unlink(missing_ok=True)
+            (config.PDF_DIR / owner / doc["filename"]).unlink(missing_ok=True)
         except Exception:
             pass
     refresh_retriever()

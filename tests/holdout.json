@@ -1,0 +1,326 @@
+{
+ "note": "Labeled question set for tests/evaluate.py. 'expect' is answer or refuse. gold_pages are NOT written by hand: tests/build_answer_keys.py builds them from gold_sections (every page that label section covers) or gold_text (every PDF page whose real text matches the fact). Nothing is taken from MedCite's answers. Do not tune the system against these sets; add new questions instead.",
+ "questions": [
+  {
+   "id": "ela-indic",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "What is ELAHERE indicated for?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "1 INDICATIONS"
+   ]
+  },
+  {
+   "id": "ela-dose",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "What is the recommended dosage of ELAHERE?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "2.2 Recommended Dosage"
+   ]
+  },
+  {
+   "id": "ela-preg",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "Can ELAHERE be used during pregnancy?",
+   "gold_pages": [
+    7,
+    8,
+    13,
+    14
+   ],
+   "gold_sections": [
+    "8.1 Pregnancy",
+    "5.4 Embryo-Fetal"
+   ]
+  },
+  {
+   "id": "ela-ae",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "What are the most common adverse reactions of ELAHERE?",
+   "gold_pages": [
+    3,
+    4,
+    5,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+   ],
+   "gold_sections": [
+    "6 ADVERSE REACTIONS",
+    "6.1 Clinical Trials",
+    "ADVERSE REACTIONS"
+   ]
+  },
+  {
+   "id": "ela-eye",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "What does the label warn about eye problems?",
+   "gold_pages": [
+    6,
+    7
+   ],
+   "gold_sections": [
+    "5.1 Ocular"
+   ]
+  },
+  {
+   "id": "ela-elderly",
+   "drug": "elahere",
+   "expect": "answer",
+   "question": "Is ELAHERE okay for older people?",
+   "gold_pages": [
+    14
+   ],
+   "gold_sections": [
+    "8.5 Geriatric"
+   ]
+  },
+  {
+   "id": "emb-indic",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "What infections does EMBLAVEO treat?",
+   "gold_pages": [
+    1,
+    3
+   ],
+   "gold_sections": [
+    "INDICATIONS AND USAGE",
+    "1.1 ",
+    "1.2 "
+   ]
+  },
+  {
+   "id": "emb-contra",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "Who should not use EMBLAVEO?",
+   "gold_pages": [
+    1,
+    6
+   ],
+   "gold_sections": [
+    "CONTRAINDICATIONS",
+    "4 CONTRAINDICATIONS"
+   ]
+  },
+  {
+   "id": "emb-overdose",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "What is known about EMBLAVEO overdosage?",
+   "gold_pages": [
+    13
+   ],
+   "gold_sections": [
+    "10 OVERDOSAGE"
+   ]
+  },
+  {
+   "id": "emb-preg",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "Is EMBLAVEO safe in pregnancy?",
+   "gold_pages": [
+    10,
+    11,
+    12
+   ],
+   "gold_sections": [
+    "8.1 Pregnancy"
+   ]
+  },
+  {
+   "id": "emb-storage",
+   "drug": "emblaveo",
+   "expect": "answer",
+   "question": "How should EMBLAVEO be stored?",
+   "gold_pages": [
+    6,
+    19
+   ],
+   "gold_sections": [
+    "16 HOW SUPPLIED",
+    "2.5 Storage"
+   ]
+  },
+  {
+   "id": "bet-indic",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "What is BETAGAN used for?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "INDICATIONS AND USAGE"
+   ]
+  },
+  {
+   "id": "bet-contra",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "What are the contraindications of BETAGAN?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "CONTRAINDICATIONS"
+   ]
+  },
+  {
+   "id": "bet-dose",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "How is BETAGAN dosed?",
+   "gold_pages": [
+    7
+   ],
+   "gold_sections": [
+    "DOSAGE AND ADMINISTRATION"
+   ]
+  },
+  {
+   "id": "bet-overdose",
+   "drug": "betagan",
+   "expect": "answer",
+   "question": "What happens in a BETAGAN overdose?",
+   "gold_pages": [
+    6,
+    7
+   ],
+   "gold_sections": [
+    "OVERDOSAGE"
+   ]
+  },
+  {
+   "id": "kta-dose",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "What is the dosing of K-TAB?",
+   "gold_pages": [
+    1,
+    2
+   ],
+   "gold_sections": [
+    "DOSAGE AND ADMINISTRATION",
+    "2.1 ",
+    "2.2 "
+   ]
+  },
+  {
+   "id": "kta-contra",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "Who should not take K-TAB?",
+   "gold_pages": [
+    1,
+    3
+   ],
+   "gold_sections": [
+    "CONTRAINDICATIONS",
+    "4 CONTRAINDICATIONS"
+   ]
+  },
+  {
+   "id": "kta-overdose",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "What are the symptoms of a K-TAB overdose?",
+   "gold_pages": [
+    5,
+    6
+   ],
+   "gold_sections": [
+    "10.1 ",
+    "10.2 "
+   ]
+  },
+  {
+   "id": "kta-kids",
+   "drug": "ktab",
+   "expect": "answer",
+   "question": "Can kids use K-TAB?",
+   "gold_pages": [
+    1,
+    4
+   ],
+   "gold_sections": [
+    "8.4 Pediatric",
+    "USE IN SPECIFIC POPULATIONS"
+   ]
+  },
+  {
+   "id": "ble-indic",
+   "drug": "blephamide_suspension",
+   "expect": "answer",
+   "question": "What is BLEPHAMIDE used for?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "INDICATIONS AND USAGE"
+   ]
+  },
+  {
+   "id": "ble-ae",
+   "drug": "blephamide_suspension",
+   "expect": "answer",
+   "question": "What adverse reactions can BLEPHAMIDE cause?",
+   "gold_pages": [
+    5
+   ],
+   "gold_sections": [
+    "ADVERSE REACTIONS"
+   ]
+  },
+  {
+   "id": "ood2-joke",
+   "drug": "linzess",
+   "expect": "refuse",
+   "question": "Tell me a joke",
+   "gold_pages": []
+  },
+  {
+   "id": "ood2-pm",
+   "drug": "avycaz",
+   "expect": "refuse",
+   "question": "Who is the prime minister of India?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood2-laptop",
+   "drug": "ubrelvy",
+   "expect": "refuse",
+   "question": "How do I fix my laptop?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood2-time",
+   "drug": "fetzima",
+   "expect": "refuse",
+   "question": "What time is it in London?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood2-poem",
+   "drug": "synthroid",
+   "expect": "refuse",
+   "question": "Write a poem about the ocean",
+   "gold_pages": []
+  }
+ ]
+}

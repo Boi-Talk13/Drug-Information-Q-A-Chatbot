@@ -20,7 +20,7 @@ from typing import Dict, List
 
 from .. import config
 from ..pdf_reader.chunker import Chunk, chunk_document
-from ..pdf_reader.reader import read_pdf
+from ..pdf_reader.reader import PdfDocument, read_pdf
 
 
 def _key(owner: str, drug_id: str) -> str:
@@ -86,17 +86,16 @@ def _save(index: Dict, index_file: Path) -> None:
     index_file.write_text(json.dumps(index, ensure_ascii=False, indent=2))
 
 
-def add_or_replace_pdf(path: Path | str, owner: str, index_file: Path | None = None) -> Dict:
-    """Parse ONE pdf (owned by `owner`) and merge it into the index.
+def add_or_replace_pdf_doc(doc: PdfDocument, owner: str, index_file: Path | None = None) -> Dict:
+    """Merge an ALREADY-PARSED pdf (owned by `owner`) into the index.
 
-    Only this file is read (fast). Any previous doc with the same owner+drug_id
-    is replaced. Other users' documents are untouched.
+    Split out from add_or_replace_pdf so the caller can validate the parsed
+    document (e.g. confirm it's really a drug label) before it's committed —
+    without reading the file twice.
     """
-    path = Path(path)
     index_file = Path(index_file or config.INDEX_FILE)
     index = load_index(index_file)
 
-    doc = read_pdf(path)
     doc_chunks = chunk_document(doc)
 
     # Drop this owner's previous chunks for this drug id, keep everyone else's.
@@ -108,6 +107,16 @@ def add_or_replace_pdf(path: Path | str, owner: str, index_file: Path | None = N
     index.setdefault("documents", {})[_key(owner, doc.drug_id)] = _doc_entry(owner, doc, len(doc_chunks))
     _save(index, index_file)
     return index["documents"][_key(owner, doc.drug_id)]
+
+
+def add_or_replace_pdf(path: Path | str, owner: str, index_file: Path | None = None) -> Dict:
+    """Parse ONE pdf (owned by `owner`) and merge it into the index.
+
+    Only this file is read (fast). Any previous doc with the same owner+drug_id
+    is replaced. Other users' documents are untouched.
+    """
+    doc = read_pdf(Path(path))
+    return add_or_replace_pdf_doc(doc, owner=owner, index_file=index_file)
 
 
 def remove_drug(drug_id: str, owner: str, index_file: Path | None = None) -> bool:

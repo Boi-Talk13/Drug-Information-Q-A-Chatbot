@@ -22,10 +22,17 @@ data/index/
 # but keep the folder in git
 !data/index/.gitkeep
 
-# medicine PDFs are large / user-private; keep the folder, never the files
-# (covers per-user subfolders too, e.g. data/pdfs/user-101/*.pdf)
+# Users' uploaded PDFs are private — never commit them.
+# (covers per-user subfolders, e.g. data/pdfs/user-101/*.pdf)
 data/pdfs/**
 !data/pdfs/.gitkeep
+# ...EXCEPT the curated shared library, which ships WITH the product so every
+# deployment starts with the same verified medicine PDFs.
+!data/pdfs/shared/
+!data/pdfs/shared/*.pdf
 
 # OS
 .DS_Store
+
+# Evaluation scratch file (written, then swapped into tests/results/<set>.json)
+tests/results/*.tmp

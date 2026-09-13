@@ -6,12 +6,12 @@
  * of verified source pages.
  */
 import React, { useState } from 'react';
-import { ShieldCheck, AlertTriangle, BookOpen, Copy, Check, ExternalLink, Sparkles } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, BookOpen, Copy, Check, ExternalLink, Sparkles, FileText, Info } from 'lucide-react';
 import Citation from './Citation';
 
 export default function AssistantMessage({ message, onCitationClick }) {
   const [copied, setCopied] = useState(false);
-  const { text, citations = [], section, is_advice, drug_name } = message;
+  const { text, citations = [], section, is_advice, drug_name, source_pdf } = message;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
@@ -63,6 +63,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
           source={citObj1.source || drug_name || 'Prescribing Information'}
           section={citObj1.section || section}
           text={citObj1.text}
+          file={citObj1.file || source_pdf}
           answerText={answerSentenceForPage(page1)}
           onClick={onCitationClick}
         />
@@ -77,6 +78,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
             source={citObj2.source || drug_name || 'Prescribing Information'}
             section={citObj2.section || section}
             text={citObj2.text}
+            file={citObj2.file || source_pdf}
             answerText={answerSentenceForPage(page2)}
             onClick={onCitationClick}
           />
@@ -201,7 +203,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
               color: 'var(--accent-amber)'
             }}>
               <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div style={{ fontSize: '0.84rem', lineHeight: 1.4 }}>
+              <div style={{ fontSize: '0.92rem', lineHeight: 1.45 }}>
                 <strong style={{ display: 'block', marginBottom: '2px', fontWeight: 600 }}>
                   Medical Advice Notice:
                 </strong>
@@ -212,9 +214,9 @@ export default function AssistantMessage({ message, onCitationClick }) {
 
           {/* Answer Text */}
           <div style={{
-            fontSize: '0.96rem',
+            fontSize: '1.08rem',
             color: 'var(--text-primary)',
-            lineHeight: 1.65,
+            lineHeight: 1.7,
             fontFamily: 'var(--font-sans)',
             whiteSpace: 'pre-wrap'
           }}>
@@ -232,7 +234,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
               gap: '6px'
             }}>
               <div style={{
-                fontSize: '0.75rem',
+                fontSize: '0.8rem',
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 display: 'flex',
@@ -248,7 +250,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
                     key={i}
                     onClick={() => onCitationClick && onCitationClick({ ...c, answerText: answerSentenceForPage(c.page) })}
                     style={{
-                      fontSize: '0.78rem',
+                      fontSize: '0.84rem',
                       backgroundColor: 'var(--bg-surface-subtle)',
                       border: '1px solid var(--border-color)',
                       borderRadius: 'var(--radius-sm)',
@@ -263,12 +265,37 @@ export default function AssistantMessage({ message, onCitationClick }) {
                   >
                     <span style={{ fontWeight: 600, color: 'var(--accent-sage-dark)' }}>Page {c.page}</span>
                     {c.section && <span style={{ opacity: 0.85 }}>• {c.section}</span>}
+                    {(c.file || source_pdf) && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.85, fontFamily: 'var(--font-mono)', fontSize: '0.72rem' }}>
+                        <FileText size={10} />
+                        {c.file || source_pdf}
+                      </span>
+                    )}
                     <ExternalLink size={11} style={{ opacity: 0.6 }} />
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Permanent disclaimer — shown under every answer, not just advice ones. */}
+          <div style={{
+            marginTop: '14px',
+            paddingTop: '10px',
+            borderTop: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '6px',
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.55
+          }}>
+            <Info size={12} style={{ flexShrink: 0, marginTop: '2px', opacity: 0.8 }} />
+            <span>
+              AI-generated from {source_pdf ? <code style={{ fontFamily: 'var(--font-mono)' }}>{source_pdf}</code> : 'the uploaded document'} only —
+              not medical advice. Verify against the original PDF and consult a qualified healthcare professional before making any medical decision.
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -5,14 +5,12 @@
 DB="${DB:-medcite}"
 INTERVAL="${INTERVAL:-10}"
 
-# Short, tidy table — grouped by day (Today / Yesterday / date) then newest first.
+# Short, tidy table — newest first. The Date column shows the real calendar
+# date for every row ("12 Sep 2026"), not relative words like Today/Yesterday,
+# so rows stay unambiguous and keep meaning when you read them back later.
 fetch() {
   psql -d "$DB" -P pager=off -c \
-    "SELECT CASE
-              WHEN to_timestamp(ts)::date = current_date THEN 'Today'
-              WHEN to_timestamp(ts)::date = current_date - 1 THEN 'Yesterday'
-              ELSE to_char(to_timestamp(ts), 'DD Mon')
-            END AS \"Day\",
+    "SELECT to_char(to_timestamp(ts), 'DD Mon YYYY') AS \"Date\",
             to_char(to_timestamp(ts), 'HH24:MI') AS \"Time\",
             user_id AS \"User\",
             LEFT(question, 32) AS \"Question\",

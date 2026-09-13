@@ -327,6 +327,26 @@ def _page_for_start(
 # Main chunking logic
 # ---------------------------------------------------------------------------
 
+def _is_heading_only(body: str, section: str) -> bool:
+    """True when the text carries no content beyond its own section heading.
+
+    `section` can be a truncated form of the heading line, so we compare on the
+    remainder: if what's left after removing the heading is under a few words,
+    there is nothing to cite.
+    """
+    def norm(s: str) -> str:
+        return re.sub(r"[^a-z0-9 ]+", " ", s.lower()).strip()
+
+    b, s = norm(body), norm(section)
+    if not s:
+        return False
+    if b == s:
+        return True
+    if b.startswith(s):
+        return len(b[len(s):].split()) < 4
+    return False
+
+
 def chunk_document(doc: PdfDocument) -> List[Chunk]:
     """
     Turn a PDF document into section-aware chunks with page provenance.
@@ -354,6 +374,14 @@ def chunk_document(doc: PdfDocument) -> List[Chunk]:
         body = _normalize_text(body)
 
         if len(body) < MIN_CHUNK_CHARS:
+            buffer = []
+            return
+
+        # A heading directly followed by another heading leaves a "chunk" that is
+        # nothing but the heading text. It states no fact, yet it matches query
+        # words perfectly ("2.2 Recommended Dosage..." vs "recommended dosage?")
+        # and so outranks the paragraph that actually answers the question.
+        if _is_heading_only(body, current_section):
             buffer = []
             return
 

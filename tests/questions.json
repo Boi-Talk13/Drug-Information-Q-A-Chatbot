@@ -1,4 +1,381 @@
 {
-  "note": "The 60 test questions go here. Write them on Day 1 and do not change them afterwards.",
-  "questions": []
+ "note": "Labeled question set for tests/evaluate.py. 'expect' is answer or refuse. gold_pages are NOT written by hand: tests/build_answer_keys.py builds them from gold_sections (every page that label section covers) or gold_text (every PDF page whose real text matches the fact). Nothing is taken from MedCite's answers. Do not tune the system against these sets; add new questions instead.",
+ "questions": [
+  {
+   "id": "lin-dose",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "What is the recommended dose of LINZESS?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "2.1 Recommended Dosage"
+   ]
+  },
+  {
+   "id": "lin-indic",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "What is LINZESS used for?",
+   "gold_pages": [
+    2
+   ],
+   "gold_sections": [
+    "1 INDICATIONS"
+   ]
+  },
+  {
+   "id": "lin-preg",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "Can pregnant women take LINZESS?",
+   "gold_pages": [
+    9
+   ],
+   "gold_sections": [
+    "8.1 Pregnancy"
+   ]
+  },
+  {
+   "id": "lin-overdose",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "What happens if someone takes too much LINZESS?",
+   "gold_pages": [
+    11
+   ],
+   "gold_sections": [
+    "10 OVERDOSAGE"
+   ]
+  },
+  {
+   "id": "lin-contra",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "Who should not take LINZESS?",
+   "gold_pages": [
+    4
+   ],
+   "gold_sections": [
+    "4 CONTRAINDICATIONS"
+   ]
+  },
+  {
+   "id": "lin-diarrhea",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "What does the label warn about diarrhea?",
+   "gold_pages": [
+    4,
+    5
+   ],
+   "gold_sections": [
+    "5.2 Diarrhea"
+   ]
+  },
+  {
+   "id": "lin-ae",
+   "drug": "linzess",
+   "expect": "answer",
+   "question": "What adverse reactions were seen in clinical trials?",
+   "gold_pages": [
+    5
+   ],
+   "gold_sections": [
+    "6.1 Clinical Trials"
+   ]
+  },
+  {
+   "id": "syn-indic",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "What is SYNTHROID indicated for?",
+   "gold_pages": [
+    3
+   ],
+   "gold_sections": [
+    "1 INDICATIONS"
+   ]
+  },
+  {
+   "id": "syn-admin",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "How should SYNTHROID be taken?",
+   "gold_pages": [
+    3,
+    4
+   ],
+   "gold_sections": [
+    "2.1 Important Administration"
+   ]
+  },
+  {
+   "id": "syn-preg",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "Is SYNTHROID safe during pregnancy?",
+   "gold_pages": [
+    13,
+    14
+   ],
+   "gold_sections": [
+    "8.1 Pregnancy"
+   ]
+  },
+  {
+   "id": "syn-ae",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "What are the adverse reactions of SYNTHROID?",
+   "gold_pages": [
+    9,
+    10
+   ],
+   "gold_sections": [
+    "6 ADVERSE REACTIONS"
+   ]
+  },
+  {
+   "id": "syn-contra",
+   "drug": "synthroid",
+   "expect": "answer",
+   "question": "What are the contraindications for SYNTHROID?",
+   "gold_pages": [
+    8
+   ],
+   "gold_sections": [
+    "4 CONTRAINDICATIONS"
+   ]
+  },
+  {
+   "id": "avy-indic",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "What infections is AVYCAZ used to treat?",
+   "gold_pages": [
+    3
+   ],
+   "gold_sections": [
+    "INDICATIONS AND USAGE"
+   ]
+  },
+  {
+   "id": "avy-dose",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "What is the recommended dosage of AVYCAZ?",
+   "gold_pages": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "gold_sections": [
+    "DOSAGE AND ADMINISTRATION"
+   ]
+  },
+  {
+   "id": "avy-ae",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "What are the common adverse reactions to AVYCAZ?",
+   "gold_pages": [
+    10,
+    11,
+    12,
+    13,
+    14
+   ],
+   "gold_sections": [
+    "ADVERSE REACTIONS"
+   ]
+  },
+  {
+   "id": "avy-preg",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "Can AVYCAZ be used in pregnancy?",
+   "gold_pages": [
+    14,
+    15,
+    16,
+    17
+   ],
+   "gold_sections": [
+    "8 USE IN SPECIFIC POPULATIONS"
+   ]
+  },
+  {
+   "id": "avy-overdose",
+   "drug": "avycaz",
+   "expect": "answer",
+   "question": "What should be done in an AVYCAZ overdose?",
+   "gold_pages": [
+    17
+   ],
+   "gold_sections": [
+    "OVERDOSAGE"
+   ]
+  },
+  {
+   "id": "ubr-dose",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "What is the dosage of UBRELVY?",
+   "gold_pages": [
+    1,
+    2,
+    3
+   ],
+   "gold_sections": [
+    "DOSAGE AND ADMINISTRATION"
+   ]
+  },
+  {
+   "id": "ubr-preg",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "Can UBRELVY be taken during pregnancy?",
+   "gold_pages": [
+    1,
+    6,
+    7,
+    8
+   ],
+   "gold_sections": [
+    "USE IN SPECIFIC POPULATIONS"
+   ]
+  },
+  {
+   "id": "ubr-overdose",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "What happens with an overdose of UBRELVY?",
+   "gold_pages": [
+    8
+   ],
+   "gold_sections": [
+    "OVERDOSAGE"
+   ]
+  },
+  {
+   "id": "ubr-contra",
+   "drug": "ubrelvy",
+   "expect": "answer",
+   "question": "What are the contraindications of UBRELVY?",
+   "gold_pages": [
+    1,
+    3,
+    4
+   ],
+   "gold_sections": [
+    "CONTRAINDICATIONS"
+   ]
+  },
+  {
+   "id": "fet-indic",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "What is FETZIMA indicated for?",
+   "gold_pages": [
+    3
+   ],
+   "gold_sections": [
+    "INDICATIONS AND USAGE"
+   ]
+  },
+  {
+   "id": "fet-dose",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "What is the recommended dose of FETZIMA?",
+   "gold_pages": [
+    3,
+    4
+   ],
+   "gold_sections": [
+    "DOSAGE AND ADMINISTRATION"
+   ]
+  },
+  {
+   "id": "fet-ae",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "What adverse reactions does FETZIMA cause?",
+   "gold_pages": [
+    10,
+    11,
+    12,
+    13
+   ],
+   "gold_sections": [
+    "ADVERSE REACTIONS"
+   ]
+  },
+  {
+   "id": "fet-overdose",
+   "drug": "fetzima",
+   "expect": "answer",
+   "question": "What is known about FETZIMA overdosage?",
+   "gold_pages": [
+    18
+   ],
+   "gold_sections": [
+    "OVERDOSAGE"
+   ]
+  },
+  {
+   "id": "ood-weather",
+   "drug": "linzess",
+   "expect": "refuse",
+   "question": "What is the weather today?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood-stock",
+   "drug": "avycaz",
+   "expect": "refuse",
+   "question": "What is the stock price of AbbVie?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood-ceo",
+   "drug": "ubrelvy",
+   "expect": "refuse",
+   "question": "Who is the CEO of the company?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood-recipe",
+   "drug": "synthroid",
+   "expect": "refuse",
+   "question": "Give me a recipe for pasta",
+   "gold_pages": []
+  },
+  {
+   "id": "ood-capital",
+   "drug": "fetzima",
+   "expect": "refuse",
+   "question": "What is the capital of France?",
+   "gold_pages": []
+  },
+  {
+   "id": "ood-movie",
+   "drug": "linzess",
+   "expect": "refuse",
+   "question": "Suggest a good movie to watch tonight",
+   "gold_pages": []
+  },
+  {
+   "id": "ood-football",
+   "drug": "avycaz",
+   "expect": "refuse",
+   "question": "Who won the football match yesterday?",
+   "gold_pages": []
+  }
+ ]
 }

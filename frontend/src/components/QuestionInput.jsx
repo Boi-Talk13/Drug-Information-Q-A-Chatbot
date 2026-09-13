@@ -1,7 +1,12 @@
+/**
+ * QuestionInput — the message box at the bottom of the chat.
+ * Enter sends, Shift+Enter adds a new line. Under the box it shows how many of
+ * today's questions the user has left (see DAILY_QUESTION_LIMIT in the backend).
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, CornerDownLeft, Sparkles, AlertCircle } from 'lucide-react';
 
-export default function QuestionInput({ onSend, isLoading, disabled }) {
+export default function QuestionInput({ onSend, isLoading, disabled, usage }) {
   const [query, setQuery] = useState('');
   const textareaRef = useRef(null);
 
@@ -67,7 +72,7 @@ export default function QuestionInput({ onSend, isLoading, disabled }) {
             outline: 'none',
             backgroundColor: 'transparent',
             color: 'var(--text-primary)',
-            fontSize: '0.96rem',
+            fontSize: '1.06rem',
             fontFamily: 'var(--font-sans)',
             resize: 'none',
             padding: '6px 0',
@@ -106,11 +111,26 @@ export default function QuestionInput({ onSend, isLoading, disabled }) {
         justifyContent: 'space-between',
         marginTop: '6px',
         padding: '0 4px',
-        fontSize: '0.73rem',
+        fontSize: '0.78rem',
         color: 'var(--text-muted)'
       }}>
         <span>Press <kbd style={{ fontFamily: 'var(--font-mono)', padding: '1px 4px', background: 'var(--bg-hover)', borderRadius: '3px' }}>Enter</kbd> to send, <kbd style={{ fontFamily: 'var(--font-mono)', padding: '1px 4px', background: 'var(--bg-hover)', borderRadius: '3px' }}>Shift + Enter</kbd> for new line</span>
-        <span>Answers derived only from verified drug label PDFs</span>
+        {/* The input stays enabled at 0: questions asked before are still
+            answered instantly from saved answers, and greetings are free. */}
+        {usage ? (
+          <span
+            title="Only answers the AI writes count. Questions asked before are free."
+            style={{
+              color: usage.remaining === 0 ? 'var(--accent-red, #B4453C)'
+                : usage.remaining <= 5 ? 'var(--accent-amber)' : 'var(--text-muted)',
+              fontWeight: usage.remaining <= 5 ? 600 : 400
+            }}
+          >
+            {usage.remaining} of {usage.limit} questions left today
+          </span>
+        ) : (
+          <span>Answers derived only from verified drug label PDFs</span>
+        )}
       </div>
     </form>
   );

@@ -156,7 +156,7 @@ body {
   background-color: var(--accent-sage-light);
   color: var(--accent-sage-dark);
   border: 1px solid var(--accent-sage-border);
-  padding: 1px 7px;
+  padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -225,4 +225,16 @@ body {
   visibility: visible;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* The RxAbbVie link box. The placeholder is a worked example of a real link,
+   so it has to be readable rather than the browser's near-invisible grey. */
+.source-url-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.95;
+  font-size: 0.92rem;
+}
+.source-url-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-sage-light);
 }

@@ -7,7 +7,9 @@ import React from 'react';
 import { HelpCircle, ShieldAlert, Info } from 'lucide-react';
 
 export default function RefusalMessage({ message }) {
-  const { refusal_reason, drug_name } = message;
+  // limit_reached: the user is out of AI answers for today. Not a gap in the
+  // PDF, so it must not say "the documents don't contain this".
+  const { refusal_reason, drug_name, limit_reached, text } = message;
 
   return (
     <div className="animate-fade-in" style={{
@@ -68,7 +70,7 @@ export default function RefusalMessage({ message }) {
               gap: '4px'
             }}>
               <ShieldAlert size={12} />
-              Responsible AI Safeguard — Hallucination Prevention
+              {limit_reached ? 'Daily question limit' : 'Responsible AI Safeguard — Hallucination Prevention'}
             </span>
           </div>
 
@@ -79,7 +81,7 @@ export default function RefusalMessage({ message }) {
             marginBottom: '6px',
             letterSpacing: '-0.01em'
           }}>
-            I don't know based on the available documents.
+            {limit_reached ? "You've reached today's question limit." : "I don't know based on the available documents."}
           </h3>
 
           <p style={{
@@ -88,7 +90,9 @@ export default function RefusalMessage({ message }) {
             lineHeight: 1.55,
             marginBottom: '12px'
           }}>
-            The available prescribing documents do not contain explicit information to answer this question accurately. MedCite is strictly configured never to guess or make up medical facts.
+            {limit_reached
+              ? text
+              : 'The available prescribing documents do not contain explicit information to answer this question accurately. MedCite is strictly configured never to guess or make up medical facts.'}
           </p>
 
           {refusal_reason && (

@@ -3,8 +3,15 @@
  * Supports both Live FastAPI Backend integration & robust dynamic medicine list management.
  */
 
-const LIVE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/chat';
-const LIVE_UPLOAD_URL = import.meta.env.VITE_UPLOAD_BASE_URL || 'http://localhost:8000/api/upload';
+// Where the backend lives. In development the Vite server (:3000) and the API
+// (:8000) are separate, so we must name the API's address. In a production
+// build the API serves this page itself (see backend/api/main.py), so we use
+// the SAME origin: a hard-coded "localhost" would make every visitor's browser
+// call its own computer, and a deployed app would never load any medicines.
+// Either can still be overridden with VITE_API_BASE_URL / VITE_UPLOAD_BASE_URL.
+const DEFAULT_ORIGIN = import.meta.env.DEV ? 'http://localhost:8000' : '';
+const LIVE_API_URL = import.meta.env.VITE_API_BASE_URL || `${DEFAULT_ORIGIN}/api/chat`;
+const LIVE_UPLOAD_URL = import.meta.env.VITE_UPLOAD_BASE_URL || `${DEFAULT_ORIGIN}/api/upload`;
 
 // Origin of the backend, derived from the chat URL (e.g. http://localhost:8000).
 const API_ORIGIN = LIVE_API_URL.replace(/\/api\/chat\/?$/, '');
@@ -218,8 +225,67 @@ const MOCK_DRUG_KNOWLEDGE = {
   }
 };
 
-// In-memory dynamic medicine store for custom uploaded PDFs
-let customMedicinesList = [...DEFAULT_MEDICINES];
+// In-memory medicine store. Starts EMPTY on purpose: the real library (the
+// shared built-in PDFs plus this user's own) arrives from fetchAvailableDrugs().
+// Seeding it with DEFAULT_MEDICINES made the first render ask the backend for a
+// demo drug that isn't indexed, producing 404s in the PDF viewer.
+let customMedicinesList = [];
+
+// Whether the backend lets ordinary visitors upload. When false (the default)
+// adding a PDF is an admin action and requires the admin key.
+let uploadsOpen = false;
+export function areUploadsOpen() { return uploadsOpen; }
+
+// Where PDFs are allowed to come from. Anyone may add a medicine, but only by
+// pasting the official link it is published at — see checkSourceUrl below.
+// These defaults are replaced by whatever /api/drugs reports.
+let sourcePolicy = { host: 'www.rxabbvie.com', catalogSize: 0 };
+export function getSourcePolicy() { return { ...sourcePolicy }; }
+
+/**
+ * Validate a pasted source link against the file the user picked.
+ * Returns an error string, or null when the pair looks acceptable.
+ *
+ * This mirrors the backend's gate to give instant feedback — the backend is
+ * still the authority and re-checks every rule, including the full catalog.
+ */
+export function checkSourceUrl(url, fileName = '') {
+  const raw = (url || '').trim();
+  if (!raw) {
+    return `Paste the official ${sourcePolicy.host} link for this PDF, ` +
+           `e.g. https://${sourcePolicy.host}/pdf/rinvoq_pi.pdf`;
+  }
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return 'That is not a valid link. It should start with https://';
+  }
+  if (!/^https?:$/.test(parsed.protocol)) return 'The link must start with https://';
+
+  const host = parsed.hostname.toLowerCase();
+  if (host !== sourcePolicy.host && host !== sourcePolicy.host.replace(/^www\./, '')) {
+    return `Only ${sourcePolicy.host} links are accepted — "${host}" is not, ` +
+           `so this PDF cannot be added.`;
+  }
+  if (!parsed.pathname.toLowerCase().startsWith('/pdf/')) {
+    return `The link should look like https://${sourcePolicy.host}/pdf/<name>.pdf`;
+  }
+
+  const linkName = decodeURIComponent(parsed.pathname).split('/').pop().toLowerCase();
+  if (!linkName.endsWith('.pdf')) return 'The link must point directly at a .pdf file.';
+
+  // The caution the whole flow rests on: a valid link must not be reusable to
+  // bring in some other document. Ignore the browser's " (1)" copy suffix.
+  if (fileName) {
+    const picked = fileName.toLowerCase().replace(/\s*\(\d+\)(?=\.pdf$)/, '');
+    if (picked !== linkName) {
+      return `Name mismatch: the link points to "${linkName}" but you chose ` +
+             `"${fileName}". The link and the PDF must be the same file.`;
+    }
+  }
+  return null;
+}
 
 const LIVE_DRUGS_URL = `${API_ORIGIN}/api/drugs`;
 
@@ -227,12 +293,28 @@ const LIVE_DRUGS_URL = `${API_ORIGIN}/api/drugs`;
  * Load the REAL list of indexed medicines from the backend and make it the
  * active list. Falls back to the built-in demo list if the backend is off.
  */
+/** Today's question allowance for this user: {used, limit, remaining}, or null. */
+export async function fetchUsage() {
+  try {
+    const uid = getUserId() || await resolveUserId() || 'anonymous';
+    const res = await fetch(`${API_ORIGIN}/api/usage?user_id=${encodeURIComponent(uid)}`);
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchAvailableDrugs() {
   try {
     const uid = getUserId() || await resolveUserId() || 'anonymous';
     const res = await fetch(`${LIVE_DRUGS_URL}?user_id=${encodeURIComponent(uid)}`);
     if (!res.ok) throw new Error(`status ${res.status}`);
     const data = await res.json();
+    uploadsOpen = !!data.uploads_open;
+    sourcePolicy = {
+      host: data.source_host || sourcePolicy.host,
+      catalogSize: data.source_catalog_size || 0,
+    };
     const drugs = (data.drugs || []).map(d => ({
       id: d.drug_id,
       name: d.title && d.title !== d.drug_id.toUpperCase()
@@ -240,7 +322,9 @@ export async function fetchAvailableDrugs() {
         : d.drug_id.toUpperCase(),
       pdf: d.filename,
       pages: d.pages,
-      manufacturer: 'Indexed PDF',
+      // Shared = part of the curated built-in library (read-only for users).
+      shared: !!d.shared,
+      manufacturer: d.shared ? 'Built-in library' : 'Your upload',
       status: 'Indexed & Verified',
     }));
     customMedicinesList = drugs;
@@ -278,11 +362,18 @@ export async function deleteMedicine(id, useLiveApi = true) {
  */
 export const MAX_UPLOAD_MB = 100;   // keep in sync with backend MAX_UPLOAD_MB
 
-export async function uploadMedicinePdfs(files, useLiveApi = true) {
+export async function uploadMedicinePdfs(files, useLiveApi = true, sourceUrl = '') {
   const list = Array.from(files || []);
   const invalid = list.find(f => !f.name.toLowerCase().endsWith('.pdf'));
   if (invalid) throw new Error(`"${invalid.name}" is not a .pdf file.`);
   if (list.length === 0) throw new Error('No files selected.');
+  // One link identifies one PDF, so only one file can be verified at a time.
+  if (list.length > 1) {
+    throw new Error('Upload one PDF at a time — each file needs its own RxAbbVie link.');
+  }
+  // Check the link here too, so an obvious mistake is caught before the upload.
+  const urlCheck = checkSourceUrl(sourceUrl, list[0].name);
+  if (urlCheck) throw new Error(urlCheck);
   // Client-side size check for a fast, clear message.
   const tooBig = list.find(f => f.size > MAX_UPLOAD_MB * 1024 * 1024);
   if (tooBig) {
@@ -294,6 +385,9 @@ export async function uploadMedicinePdfs(files, useLiveApi = true) {
     const formData = new FormData();
     list.forEach(f => formData.append('files', f));
     formData.append('user_id', uid);
+    // The official RxAbbVie link this PDF came from. The backend re-checks it
+    // against the published catalog — this is the gate, not a formality.
+    formData.append('source_url', (sourceUrl || '').trim());
     const res = await fetch(LIVE_UPLOAD_URL, { method: 'POST', body: formData });
     if (!res.ok) {
       // Surface the backend's specific reason (e.g. size/storage limit).

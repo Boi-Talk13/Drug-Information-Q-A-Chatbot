@@ -16,11 +16,13 @@ import QuestionInput from './QuestionInput';
 import SuggestedQuestion from './SuggestedQuestion';
 import SafetyDisclaimer from './SafetyDisclaimer';
 import PdfViewerPanel from './PdfViewerPanel';
-import { sendQuestion, getAvailableDrugs, fetchAvailableDrugs, resolveUserId } from '../services/apiService';
+import { sendQuestion, getAvailableDrugs, fetchAvailableDrugs, resolveUserId, fetchUsage } from '../services/apiService';
 
 const STORAGE_KEY = 'medcite_chat_sessions_v1';
 
-export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) {
+// No hardcoded starting medicine: the first drug in the user's library (the
+// shared built-in list, plus any of their own) is selected once it loads.
+export default function ChatScreen({ onBackToLanding, initialDrug = null }) {
   const [sessions, setSessions] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -54,6 +56,8 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  // Today's question allowance ({used, limit, remaining}), shown under the input.
+  const [usage, setUsage] = useState(null);
   const [selectedDrug, setSelectedDrug] = useState(initialDrug);
   // Demo Mode removed — the app always uses the live backend.
   const useLiveApi = true;
@@ -88,7 +92,10 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
 
   // Resolve this browser's short id (user-101, ...) so the badge shows it.
   useEffect(() => {
-    resolveUserId().then(() => setLibVersion(v => v + 1));
+    resolveUserId().then(() => {
+      setLibVersion(v => v + 1);
+      fetchUsage().then(u => { if (u) setUsage(u); });
+    });
   }, []);
 
   // Helper to persist sessions to localStorage & update state
@@ -115,7 +122,7 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
   const handleNewChat = () => {
     setActiveSessionId(null);
     setMessages([]);
-    setSelectedDrug('rinvoq');
+    // Keep the medicine the user is already reading; don't jump to a fixed one.
     setActiveCitation(null);
   };
 
@@ -225,6 +232,8 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
         selectedDrug,
         useLiveApi
       });
+      // Every answer reports the up-to-date allowance.
+      if (response.usage) setUsage(response.usage);
 
       const assistantMsg = {
         id: Date.now() + 1,
@@ -235,7 +244,9 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
         is_advice: response.is_advice || false,
         is_refusal: response.is_refusal || false,
         refusal_reason: response.refusal_reason,
+        limit_reached: response.limit_reached || false,
         drug_name: response.drug_name || currentDrugObj.name,
+        source_pdf: response.source_pdf || currentDrugObj.pdf,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -322,7 +333,6 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
                 onSelectQuestion={handleSendQuestion}
                 selectedDrugName={currentDrugObj.name}
                 hasDrugs={drugs.length > 0}
-                onUploaded={(id) => { if (id) setSelectedDrug(id); setLibVersion(v => v + 1); }}
               />
             ) : (
               <div style={{ maxWidth: '820px', margin: '0 auto' }}>
@@ -356,6 +366,7 @@ export default function ChatScreen({ onBackToLanding, initialDrug = 'rinvoq' }) 
             <QuestionInput
               onSend={handleSendQuestion}
               isLoading={isLoading}
+              usage={usage}
             />
           </div>
 

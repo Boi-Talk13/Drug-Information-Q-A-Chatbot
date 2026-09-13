@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 from .. import config
 from ..search.hybrid import Hit, Retriever
 from . import safety
-from .llm import write_answer
+from .llm import write_answer_with_mode
 
 _CITE = re.compile(r"\[p\.\s*(\d+)(?:\s*,\s*(\d+))?\]")
 
@@ -101,9 +101,23 @@ def _build_citations(answer: str, hits: List[Hit]) -> List[Dict]:
     for p in ordered_pages[: config.MAX_CITATIONS]:
         h = best_by_page.get(p) or hits[0]
         citations.append(
-            {"page": p, "section": h.section, "text": _snippet(h.text)}
+            {"page": p, "section": h.section, "text": _snippet(h.text), "file": h.filename}
         )
     return citations
+
+
+def _select_context(hits: List[Hit]) -> List[Hit]:
+    """The pieces actually sent to the AI (see CONTEXT_MARGIN in config.py).
+
+    Keeps the top MIN_CONTEXT_PIECES, plus any further piece scoring within
+    CONTEXT_MARGIN of the best one. A clear winner costs ~3 pieces of tokens; a
+    close race still sends up to TOP_K so the right section is not cut off.
+    """
+    if not hits:
+        return hits
+    best = hits[0].score
+    return [h for i, h in enumerate(hits)
+            if i < config.MIN_CONTEXT_PIECES or h.score >= best - config.CONTEXT_MARGIN]
 
 
 def answer_question(
@@ -112,6 +126,7 @@ def answer_question(
     drug_filter: Optional[str] = None,
     retriever: Optional[Retriever] = None,
     user_id: Optional[str] = None,
+    llm_allowed: bool = True,
 ) -> Dict:
     history = history or []
     retriever = retriever or Retriever()
@@ -119,23 +134,29 @@ def answer_question(
 
     doc = retriever.document(drug_filter, user_id) if drug_filter else None
     drug_name = doc["title"] if doc else (drug_filter or "this medicine").upper()
+    source_pdf = doc["filename"] if doc else None
     has_drug = bool(doc)
 
     # 0. Greetings / thanks / "what can you do" -> friendly reply, no retrieval.
     kind = safety.detect_smalltalk(question)
     if kind:
-        return safety.smalltalk_response(kind, drug_name, has_drug)
+        return {**safety.smalltalk_response(kind, drug_name, has_drug), "source_pdf": source_pdf}
 
     # 1. No document loaded for this drug -> honest refusal.
     if drug_filter and not retriever.has_drug(drug_filter, user_id):
-        return safety.refusal_no_document(drug_name)
+        return {**safety.refusal_no_document(drug_name), "source_pdf": None}
 
-    # 2. Clearly outside a drug label -> refuse.
-    if safety.is_out_of_domain(question):
-        return safety.refusal_out_of_domain(drug_name)
+    # 2. Clearly outside a drug label -> refuse. The keyword list catches the
+    #    obvious topics; is_on_topic catches the rest by checking the question's
+    #    words against what the loaded labels actually contain.
+    if safety.is_out_of_domain(question) or not retriever.is_on_topic(retriever.correct(question)):
+        return {**safety.refusal_out_of_domain(drug_name), "source_pdf": source_pdf}
 
-    # 3. Resolve short follow-ups against the chat, then search.
-    resolved = safety.rewrite_followup(question, history)
+    # 3. Resolve short follow-ups against the chat, fix typos, then search.
+    # The corrected text is what the model sees too — otherwise it would be
+    # asked "wht happens if i take tht" while the search looked for the fixed
+    # wording, and the two could disagree.
+    resolved = retriever.correct(safety.rewrite_followup(question, history))
     hits = retriever.search(resolved, drug_id=drug_filter, owner=user_id, top_k=config.TOP_K)
 
     top_score = hits[0].score if hits else 0.0
@@ -153,17 +174,40 @@ def answer_question(
             "section": None,
             "citations": [],
             "drug_name": drug_name,
+            "source_pdf": source_pdf,
         }
 
     # 4. Weak but present -> answer from the closest text, marked as related.
     weak = top_score < config.WEAK_SCORE
     is_advice = safety.detect_advice(question)
 
-    raw = write_answer(resolved, hits, weak=weak)
+    # 4b. Out of AI answers for today (see DAILY_QUESTION_LIMIT) -> say so
+    #     instead of calling the AI. Greetings and refusals above stay free.
+    if not llm_allowed:
+        return {
+            "is_refusal": True,
+            "is_advice": is_advice,
+            "limit_reached": True,
+            "refusal_reason": "Daily question limit reached",
+            "answer": (
+                f"You've used all {config.DAILY_QUESTION_LIMIT} questions for today. "
+                "Questions that have been asked before are still answered instantly, "
+                "and your limit resets at midnight."
+            ),
+            "section": None,
+            "citations": [],
+            "drug_name": drug_name,
+            "source_pdf": source_pdf,
+            "answer_mode": None,
+        }
+
+    # Only these pieces go to the AI, so pages are verified against them too.
+    context = _select_context(hits)
+    raw, answer_mode = write_answer_with_mode(resolved, context, weak=weak)
 
     # 5. Verify: strip invented pages, then build a matching, de-duplicated
     #    citation list from the real chunks.
-    allowed_pages = {h.page for h in hits}
+    allowed_pages = {h.page for h in context}
     verified = _strip_unverified_pages(raw, allowed_pages)
     verified = _collapse_adjacent_cites(verified)
 
@@ -177,14 +221,18 @@ def answer_question(
     if not _pages_in_answer(verified) and hits:
         verified = verified.rstrip(".") + f" [p. {hits[0].page}]."
 
-    citations = _build_citations(verified, hits)
+    citations = _build_citations(verified, context)
     section = citations[0]["section"] if citations else (hits[0].section if hits else None)
 
     return {
         "is_refusal": False,
         "is_advice": is_advice,
+        # "llm" normally; "extractive" when the AI was unavailable and the
+        # backup writer answered instead.
+        "answer_mode": answer_mode,
         "answer": verified,
         "section": section,
         "citations": citations,
         "drug_name": drug_name,
+        "source_pdf": source_pdf,
     }

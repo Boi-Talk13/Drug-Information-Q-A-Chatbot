@@ -10,15 +10,15 @@ import { BookOpen } from 'lucide-react';
  * Citation Component
  * Renders an elegant inline citation tag [p. 12] with hover tooltips and click handler.
  */
-export default function Citation({ page, source = 'Prescribing Information', section, text, answerText, onClick }) {
+export default function Citation({ page, source = 'Prescribing Information', section, text, file, answerText, onClick }) {
   const handleClick = (e) => {
     e.preventDefault();
     if (onClick) {
-      onClick({ page, source, section, text, answerText });
+      onClick({ page, source, section, text, file, answerText });
     }
   };
 
-  const tooltipText = `Source: ${source} — Page ${page}${section ? ` (${section})` : ''}`;
+  const tooltipText = `Source: ${source}${file ? ` (${file})` : ''} — Page ${page}${section ? ` (${section})` : ''}`;
 
   return (
     <span className="tooltip-wrapper">
@@ -38,6 +38,7 @@ export default function Citation({ page, source = 'Prescribing Information', sec
         </strong>
         {section && <div style={{ fontSize: '0.72rem', color: '#9DB3A7', marginBottom: '4px' }}>{section}</div>}
         <span>Page {page}</span>
+        {file && <div style={{ fontSize: '0.7rem', color: '#9DB3A7', marginTop: '2px', fontFamily: 'monospace' }}>{file}</div>}
         {text && (
           <p style={{ marginTop: '4px', fontStyle: 'italic', color: '#D4DDD8', fontSize: '0.73rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
             "{text.length > 90 ? text.substring(0, 90) + '...' : text}"
