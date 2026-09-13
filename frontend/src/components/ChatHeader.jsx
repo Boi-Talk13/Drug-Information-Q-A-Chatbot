@@ -1,5 +1,6 @@
 /**
  * ChatHeader — the top bar.
+ * // Header and chat controls
  * Holds the medicine picker (this user's own PDFs), the Upload PDF button that
  * opens the library modal, the "Live" backend badge, the anonymous user badge
  * (user-101 …), the PDF-viewer toggle, and New/Clear-chat controls.
