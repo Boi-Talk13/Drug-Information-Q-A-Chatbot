@@ -1,4 +1,5 @@
 /**
+ * // PDF viewer panel component
  * PdfViewerPanel — the real PDF viewer on the right.
  * Renders the actual PDF with react-pdf (pdf.js), lazily (only pages near view,
  * for speed). When a citation is clicked it jumps to that page and highlights
