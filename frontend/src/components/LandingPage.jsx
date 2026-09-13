@@ -1,3 +1,4 @@
+//Landing Page
 import React from 'react';
 import {
   Pill,
