@@ -1,4 +1,5 @@
 /**
+ * // Main chat screen component
  * ChatScreen — the main app screen.
  * Ties together the header, the chat history sidebar, the message stream and the
  * PDF viewer. It sends each question to the backend (services/apiService), stores
