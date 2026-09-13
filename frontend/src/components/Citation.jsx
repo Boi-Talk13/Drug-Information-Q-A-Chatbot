@@ -27,7 +27,7 @@ export default function Citation({ page, source = 'Prescribing Information', sec
         className="citation-tag"
         onClick={handleClick}
         aria-label={`Jump to page ${page} in ${source}`}
-        title={tooltipText}
+        title={`${tooltipText} — Click to open`}
       >
         <BookOpen size={11} style={{ opacity: 0.8 }} />
         <span>p. {page}</span>
