@@ -184,4 +184,5 @@ users; heavy use on the free Groq plan falls back to backup answers.
 | Lead | Team member 8 | Joins both sides, tests, demo |
 
 Data: free public prescribing information from [rxabbvie.com](https://www.rxabbvie.com/).
+Example of a link MedCite accepts for upload: https://www.rxabbvie.com/pdf/linzess_pi.pdf (LINZESS)
 MedCite is a document lookup tool, not a doctor: it never tells anyone what to take.
