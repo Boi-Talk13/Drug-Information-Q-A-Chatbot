@@ -1,4 +1,3 @@
-// Main application component
 import React, { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import ChatScreen from './components/ChatScreen';

@@ -16,7 +16,8 @@ import re
 from typing import Dict, List
 
 ADVICE_PATTERNS = [
-    r"should i\b", r"can i (stop|take|double|mix|skip|split|crush)",
+    r"should i\b", r"may i\b", r"is it okay to\b",
+    r"can i (stop|take|double|mix|skip|split|crush)",
     r"is it safe for me", r"what should i do", r"do i need to",
     r"my (doctor|symptoms|dose)", r"doctor told me", r"i feel", r"i am feeling",
     r"diagnose", r"prescribe (me|for me)", r"how much should i",

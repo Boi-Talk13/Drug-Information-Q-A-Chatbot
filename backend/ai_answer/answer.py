@@ -166,6 +166,11 @@ def answer_question(
     verified = _strip_unverified_pages(raw, allowed_pages)
     verified = _collapse_adjacent_cites(verified)
 
+    # Keep a failed or empty model response useful instead of returning only a
+    # citation marker.
+    if not re.sub(_CITE, "", verified).strip() and hits:
+        verified = f"The label states: {_snippet(hits[0].text, limit=400)}"
+
     # If verification removed every citation, anchor to the top hit so the
     # answer still has a real source.
     if not _pages_in_answer(verified) and hits:

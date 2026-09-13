@@ -35,7 +35,7 @@ export default function LoadingMessage() {
         backgroundColor: 'var(--bg-surface)',
         border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-lg)',
-        padding: '10px 20px',
+        padding: '10px 18px',
         boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{

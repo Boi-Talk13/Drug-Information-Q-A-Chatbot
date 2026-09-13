@@ -1,4 +1,3 @@
-//Landing Page
 import React from 'react';
 import {
   Pill,
@@ -79,7 +78,7 @@ export default function LandingPage({ onGetStarted }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             position: 'relative',
-            width: '44px',
+            width: '42px',
             height: '42px',
             borderRadius: '12px',
             backgroundColor: 'var(--accent-sage-light)',

@@ -1,5 +1,4 @@
 /**
- * // Medicine list and selection modal
  * MedicineListModal — the "Medicine PDF Library" popup.
  * Lists THIS user's uploaded PDFs, lets them upload one or many at once,
  * select one for Q&A, or delete one. All actions call the backend scoped by
@@ -87,7 +86,7 @@ export default function MedicineListModal({ selectedDrug, onSelectDrug, onClose,
       right: 0,
       bottom: 0,
       backgroundColor: 'rgba(31, 37, 34, 0.45)',
-      backdropFilter: 'blur(4px)',
+      backdropFilter: 'blur(3px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
