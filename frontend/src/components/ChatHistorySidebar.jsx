@@ -48,7 +48,7 @@ export default function ChatHistorySidebar({
   return (
     <aside style={{
       width: '270px',
-      height: '100%',
+      height: '900%',
       backgroundColor: 'var(--bg-sidebar)',
       borderRight: '1px solid var(--border-color)',
       display: 'flex',
