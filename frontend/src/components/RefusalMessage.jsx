@@ -13,7 +13,7 @@ export default function RefusalMessage({ message }) {
     <div className="animate-fade-in" style={{
       display: 'flex',
       justifyContent: 'flex-start',
-      marginBottom: '24px',
+      marginBottom: '26px',
       paddingRight: '20px'
     }}>
       <div style={{
