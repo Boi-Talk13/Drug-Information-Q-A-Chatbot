@@ -41,7 +41,7 @@ export default function KnowledgeBasePage({ onBackToLanding, onOpenChatWithDrug 
             borderRadius: 'var(--radius-md)',
             padding: '8px 16px',
             fontSize: '0.88rem',
-            fontWeight: 600,
+            fontWeight: 500,
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
