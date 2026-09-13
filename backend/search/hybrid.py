@@ -75,13 +75,14 @@ class Retriever:
         self._vocab = build_vocabulary(texts) if texts else set()
 
     # -- info helpers -------------------------------------------------------
-    def _key(self, owner: str, drug_id: str) -> str:
-        return f"{owner}::{drug_id}"
+    def _key(self, owner: Optional[str], drug_id: str) -> str:
+        owner_str = owner or "anonymous"
+        return f"{owner_str}::{drug_id}"
 
-    def has_drug(self, drug_id: str, owner: str) -> bool:
+    def has_drug(self, drug_id: str, owner: Optional[str] = None) -> bool:
         return self._key(owner, drug_id) in self.documents
 
-    def document(self, drug_id: str, owner: str) -> Optional[Dict]:
+    def document(self, drug_id: str, owner: Optional[str] = None) -> Optional[Dict]:
         return self.documents.get(self._key(owner, drug_id))
 
     def documents_for(self, owner: str) -> List[Dict]:

@@ -115,6 +115,7 @@ def answer_question(
 ) -> Dict:
     history = history or []
     retriever = retriever or Retriever()
+    user_id = user_id or "anonymous"
 
     doc = retriever.document(drug_filter, user_id) if drug_filter else None
     drug_name = doc["title"] if doc else (drug_filter or "this medicine").upper()
