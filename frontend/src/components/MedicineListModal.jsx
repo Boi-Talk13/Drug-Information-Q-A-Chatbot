@@ -1,4 +1,5 @@
 /**
+ * // Medicine list and selection modal
  * MedicineListModal — the "Medicine PDF Library" popup.
  * Lists THIS user's uploaded PDFs, lets them upload one or many at once,
  * select one for Q&A, or delete one. All actions call the backend scoped by
