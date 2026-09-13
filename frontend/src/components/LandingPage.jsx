@@ -78,7 +78,7 @@ export default function LandingPage({ onGetStarted }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             position: 'relative',
-            width: '42px',
+            width: '44px',
             height: '42px',
             borderRadius: '12px',
             backgroundColor: 'var(--accent-sage-light)',
