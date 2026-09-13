@@ -359,6 +359,23 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
               <ZoomOut size={18} />
             </button>
             <span style={{ minWidth: 46, textAlign: 'center', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(zoom * 100)}%</span>
+            <button
+            type="button"
+            title="Reset zoom"
+            onClick={() => setZoom(1.35)}
+            style={{
+              padding: '4px 8px',
+              background: 'var(--bg-surface-subtle)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: 'var(--text-primary)',
+              fontSize: '0.72rem',
+              fontWeight: 600
+              }}
+            >
+              Reset
+            </button>
             <button type="button" title="Zoom in" onClick={() => setZoom(z => Math.min(3, +(z + 0.15).toFixed(2)))}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 28, background: 'var(--bg-surface-subtle)', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-primary)' }}>
               <ZoomIn size={18} />
