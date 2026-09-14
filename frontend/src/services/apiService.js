@@ -45,7 +45,10 @@ function getBrowserToken() {
     }
     return t;
   } catch {
-    return 'anon-token';
+    // localStorage/crypto unavailable (private browsing, old browser, etc.) —
+    // still return a per-tab-session random value, never a fixed constant,
+    // so different visitors on this path don't collapse into one user.
+    return 'anon-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 }
 

@@ -70,6 +70,18 @@ body {
   overflow-x: hidden;
 }
 
+/* Mobile browsers (iOS Safari, Chrome) auto-zoom the page when a tapped
+   input/textarea has font-size under 16px, and stay zoomed until the user
+   taps elsewhere. Force 16px on small screens only so desktop sizing is
+   unaffected. */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
