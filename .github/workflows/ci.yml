@@ -1,0 +1,89 @@
+# CI — automatic checks on every push and pull request.
+#
+# GitHub runs this by itself and shows a green tick (everything works) or a
+# red cross (something is broken) next to each commit.
+#
+# Nothing here calls the Groq AI or needs the API key, so it never uses the
+# daily AI budget. The AI accuracy test (python -m tests.evaluate) is run by
+# hand instead, because it spends Groq tokens.
+
+name: CI
+
+on:
+  push:                 # every push, to any branch
+  pull_request:
+    branches: [main]
+  workflow_dispatch:    # a "Run workflow" button in the Actions tab
+
+# If someone pushes again while a check is still running, stop the old one
+# and check the newest code (saves the free Actions minutes).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The checks only need to read the code.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend — index + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"        # same as the Dockerfile
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Check every Python file compiles
+        run: python -m compileall -q backend tests
+
+      - name: Build the search index from the built-in PDFs
+        run: python -m backend.build_index
+
+      # build_index prints problems but still exits successfully, so confirm
+      # here that all 13 built-in medicines really made it into the index.
+      - name: Check all built-in medicines were indexed
+        run: |
+          python - <<'PY'
+          import json
+          from backend import config
+          index = json.loads(config.INDEX_FILE.read_text())
+          shared = [d for d in index["documents"].values() if d.get("owner") == config.SHARED_OWNER]
+          print(f"{len(shared)} built-in medicines, {len(index['chunks'])} pieces indexed")
+          assert len(shared) >= 13, "expected 13 built-in medicines in the index"
+          PY
+
+      # Daily question limit + shared saved answers. Uses a temporary database
+      # and a fake AI, so no tokens are spent.
+      - name: Daily limit and saved-answer tests
+        run: python -m tests.test_daily_limit
+
+  frontend:
+    name: Frontend — build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"            # same as the Dockerfile
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build the website
+        run: npm run build
