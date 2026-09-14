@@ -64,14 +64,14 @@ Nothing is trained or memorised, so a new PDF works straight away.
 git clone https://github.com/Boi-Talk13/Drug-Information-Q-A-Chatbot.git
 cd Drug-Information-Q-A-Chatbot
 cp .env.example .env          # put your Groq key in AI_API_KEY
-docker compose up --build     # open http://localhost:8000
+docker compose up --build     # open http://localhost:3000
 ```
 
 **For development**
 
 ```
 pip install -r backend/requirements.txt
-python3 -m uvicorn backend.api.main:app --port 8000
+python3 -m uvicorn backend.api.main:app --port 8000   # backend, runs in the background
 
 cd frontend && npm install && npm run dev      # open http://localhost:3000
 ```
@@ -135,6 +135,7 @@ test (citation F1) will be re-run on the current version when the Groq daily lim
 1. Push the latest code to GitHub (the server clones from it).
 2. Create an EC2 server with instance type **t3.medium** (building the website needs more than 2 GB).
 3. On the server: clone, `cp .env.example .env`, add the key, `docker compose up -d --build`.
+4. Allow port **3000** in the EC2 security group, then open `http://<server-ip>:3000`.
 
 Stop the server every night, set a billing alert, and do not run the tests on demo day (they share the
 Groq budget). Step-by-step guide: [docs/aws-deploy.md](docs/aws-deploy.md).

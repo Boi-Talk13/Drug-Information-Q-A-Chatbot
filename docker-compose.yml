@@ -1,5 +1,5 @@
 # Run the whole app with:  docker compose up
-# Then open http://localhost:8000
+# Then open http://localhost:3000
 #
 # The app runs with no API key using the built-in extractive answerer. To have
 # Groq write the answers, put AI_API_KEY in a .env file next to this one
@@ -9,7 +9,9 @@ services:
   medcite:
     build: .
     ports:
-      - "8000:8000"
+      # Open the app on port 3000. Inside the container the server still
+      # listens on 8000 (see Dockerfile); this maps it to 3000 on your machine.
+      - "3000:8000"
     environment:
       # Read from .env if present; harmless if unset.
       AI_API_KEY: ${AI_API_KEY:-}

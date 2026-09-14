@@ -91,7 +91,7 @@ Under **Network settings -> Edit**, allow:
 | Port | Source | Why |
 |---|---|---|
 | 22 (SSH) | **My IP** only | So only we can log in |
-| 80 (HTTP) | Anywhere | So judges can open the site |
+| 3000 | Anywhere | So judges can open the site (MedCite runs on port 3000) |
 | 443 (HTTPS) | Anywhere | For later, if we add HTTPS |
 
 **Do not open port 5432.** That is the database. It stays closed to the internet.
@@ -221,7 +221,7 @@ Decide this on Day 1. It is less work than the alternative, not more.
 
 ## Notes
 
-- The demo link will be `http://<ip>` with no padlock. That is fine for a demo.
+- The demo link will be `http://<ip>:3000` with no padlock. That is fine for a demo.
   If a judge asks, HTTPS is a small job with Caddy, but do not spend time on it
   before Day 6.
 - The AWS server must work **without anyone's laptop**. If we connect a laptop to

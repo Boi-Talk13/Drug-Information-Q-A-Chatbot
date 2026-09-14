@@ -1,5 +1,6 @@
 # MedCite — one image that builds the React frontend and serves it from the
-# FastAPI backend, so http://localhost:8000 gives the whole app.
+# FastAPI backend on one port. docker-compose publishes it as
+# http://localhost:3000 (the server inside listens on 8000).
 
 # ---- stage 1: build the frontend ------------------------------------------
 FROM node:20-slim AS frontend
