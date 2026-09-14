@@ -72,7 +72,7 @@ export default function QuestionInput({ onSend, isLoading, disabled, usage }) {
             outline: 'none',
             backgroundColor: 'transparent',
             color: 'var(--text-primary)',
-            fontSize: '1.06rem',
+            fontSize: '1.12rem',
             fontFamily: 'var(--font-sans)',
             resize: 'none',
             padding: '6px 0',
@@ -111,7 +111,7 @@ export default function QuestionInput({ onSend, isLoading, disabled, usage }) {
         justifyContent: 'space-between',
         marginTop: '6px',
         padding: '0 4px',
-        fontSize: '0.78rem',
+        fontSize: '0.92rem',
         color: 'var(--text-muted)'
       }}>
         <span>Press <kbd style={{ fontFamily: 'var(--font-mono)', padding: '1px 4px', background: 'var(--bg-hover)', borderRadius: '3px' }}>Enter</kbd> to send, <kbd style={{ fontFamily: 'var(--font-mono)', padding: '1px 4px', background: 'var(--bg-hover)', borderRadius: '3px' }}>Shift + Enter</kbd> for new line</span>

@@ -6,7 +6,7 @@ export default function SafetyDisclaimer() {
     <footer style={{
       textAlign: 'center',
       padding: '8px 16px',
-      fontSize: '0.76rem',
+      fontSize: '0.88rem',
       color: 'var(--text-secondary)',
       backgroundColor: 'var(--bg-canvas)',
       borderTop: '1px solid var(--border-subtle)',

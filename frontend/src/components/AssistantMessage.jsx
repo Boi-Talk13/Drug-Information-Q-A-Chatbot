@@ -145,7 +145,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
-                fontSize: '0.8rem',
+                fontSize: '0.9rem',
                 fontWeight: 700,
                 color: 'var(--accent-sage-dark)',
                 letterSpacing: '-0.01em'
@@ -154,7 +154,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
               </span>
               {section && (
                 <span style={{
-                  fontSize: '0.72rem',
+                  fontSize: '0.82rem',
                   fontFamily: 'var(--font-mono)',
                   color: 'var(--text-secondary)',
                   backgroundColor: 'var(--bg-surface-subtle)',
@@ -178,7 +178,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                fontSize: '0.75rem',
+                fontSize: '0.85rem',
                 padding: '2px 6px',
                 borderRadius: '4px',
                 transition: 'all 0.15s ease'
@@ -234,7 +234,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
               gap: '6px'
             }}>
               <div style={{
-                fontSize: '0.8rem',
+                fontSize: '0.92rem',
                 fontWeight: 600,
                 color: 'var(--text-muted)',
                 display: 'flex',
@@ -250,7 +250,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
                     key={i}
                     onClick={() => onCitationClick && onCitationClick({ ...c, answerText: answerSentenceForPage(c.page) })}
                     style={{
-                      fontSize: '0.84rem',
+                      fontSize: '0.96rem',
                       backgroundColor: 'var(--bg-surface-subtle)',
                       border: '1px solid var(--border-color)',
                       borderRadius: 'var(--radius-sm)',
@@ -266,7 +266,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
                     <span style={{ fontWeight: 600, color: 'var(--accent-sage-dark)' }}>Page {c.page}</span>
                     {c.section && <span style={{ opacity: 0.85 }}>• {c.section}</span>}
                     {(c.file || source_pdf) && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.85, fontFamily: 'var(--font-mono)', fontSize: '0.72rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.85, fontFamily: 'var(--font-mono)', fontSize: '0.86rem' }}>
                         <FileText size={10} />
                         {c.file || source_pdf}
                       </span>
@@ -286,7 +286,7 @@ export default function AssistantMessage({ message, onCitationClick }) {
             display: 'flex',
             alignItems: 'flex-start',
             gap: '6px',
-            fontSize: '0.78rem',
+            fontSize: '0.92rem',
             color: 'var(--text-muted)',
             lineHeight: 1.55
           }}>
