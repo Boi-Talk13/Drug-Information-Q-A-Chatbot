@@ -132,13 +132,70 @@ test (citation F1) will be re-run on the current version when the Groq daily lim
 
 ## Deployment (AWS)
 
-1. Push the latest code to GitHub (the server clones from it).
-2. Create an EC2 server with instance type **t3.medium** (building the website needs more than 2 GB).
-3. On the server: clone, `cp .env.example .env`, add the key, `docker compose up -d --build`.
-4. Allow port **3000** in the EC2 security group, then open `http://<server-ip>:3000`.
+**Live URL:** https://medcite.ft97gngrew9p0.ap-south-1.cs.amazonlightsail.com/
 
-Stop the server every night, set a billing alert, and do not run the tests on demo day (they share the
-Groq budget). Step-by-step guide: [docs/aws-deploy.md](docs/aws-deploy.md).
+Deployed as a single container on **AWS Lightsail Containers** (`ap-south-1`) — chosen over EC2/ECS/App
+Runner because it needs no VPC, load balancer, or server patching, and gives a public HTTPS URL as soon
+as the container is created. App Runner was tried first but the account had no service subscription for
+it in any region; Lightsail Containers was the simplest working alternative.
+
+**Tools used:** Docker Desktop (multi-stage build — `node:20-slim` builds the React frontend,
+`python:3.12-slim` serves it via FastAPI/uvicorn on port 8000), AWS CLI, and the `lightsailctl` plugin
+(`brew install aws/tap/lightsailctl`) that `aws lightsail push-container-image` needs.
+
+Steps, run from the project root:
+
+```bash
+# 1. Build the image for the deployment architecture (Macs with Apple Silicon need --platform)
+docker build --platform linux/amd64 -t medcite:latest .
+
+# 2. Create the container service (one-time; assigns the public HTTPS URL)
+aws lightsail create-container-service --service-name medcite --power small --scale 1 --region ap-south-1
+
+# 3. Push the image into that service's private registry
+aws lightsail push-container-image --region ap-south-1 --service-name medcite \
+  --label medcite --image medcite:latest
+# → prints an image ref like ":medcite.medcite.N" — use the latest N below
+
+# 4. Deploy: point the service at the pushed image, open port 8000, set env vars
+aws lightsail create-container-service-deployment --region ap-south-1 --cli-input-json '{
+  "serviceName": "medcite",
+  "containers": {
+    "medcite": {
+      "image": ":medcite.medcite.N",
+      "ports": { "8000": "HTTP" },
+      "environment": {
+        "AI_API_KEY": "<your Groq key>",
+        "AI_MODEL": "openai/gpt-oss-20b",
+        "AI_BASE_URL": "https://api.groq.com/openai/v1",
+        "DAILY_QUESTION_LIMIT": "30",
+        "USAGE_TIMEZONE": "Asia/Kolkata",
+        "PDF_FOLDER": "/app/data/pdfs",
+        "INDEX_FOLDER": "/app/data/index"
+      }
+    }
+  },
+  "publicEndpoint": {
+    "containerName": "medcite",
+    "containerPort": 8000,
+    "healthCheck": { "path": "/", "successCodes": "200-499" }
+  }
+}'
+```
+
+Redeploying after a code change means repeating steps 1, 3, and 4 (bump the image label number) — there
+is no CI/CD watching the GitHub repo yet, so nothing auto-deploys on push.
+
+**Known limits of this setup:**
+- No persistent volume — the SQLite fallback DB, the search index, and any uploaded PDFs reset on every
+  redeploy. Set `DATABASE_URL` to a real Postgres instance (e.g. RDS) to make chat history and per-user
+  daily-usage counts durable across deploys.
+- Secrets (the Groq key) are passed as plain deployment environment variables, not a secrets manager —
+  fine for a demo, not for production.
+
+An older plan to deploy on a plain EC2 instance with `docker compose up` is kept at
+[docs/aws-deploy.md](docs/aws-deploy.md) for reference, but Lightsail Containers is what is actually
+running at the URL above.
 
 ---
 
