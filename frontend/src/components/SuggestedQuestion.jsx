@@ -53,8 +53,8 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
 
   return (
     <div className="animate-fade-in" style={{
-      maxWidth: '760px',
-      margin: '40px auto',
+      maxWidth: '700px',
+      margin: '24px auto',
       padding: '0 20px',
       textAlign: 'center'
     }}>
@@ -67,9 +67,9 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
         color: 'var(--accent-sage-dark)',
         padding: '4px 12px',
         borderRadius: '999px',
-        fontSize: '0.78rem',
+        fontSize: '0.74rem',
         fontWeight: 600,
-        marginBottom: '16px',
+        marginBottom: '12px',
         border: '1px solid var(--accent-sage-border)'
       }}>
         <Sparkles size={13} />
@@ -77,21 +77,21 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
       </div>
 
       <h2 style={{
-        fontSize: '2rem',
+        fontSize: '1.55rem',
         fontWeight: 700,
         color: 'var(--text-primary)',
         letterSpacing: '-0.02em',
-        marginBottom: '10px',
+        marginBottom: '8px',
         fontFamily: 'var(--font-sans)'
       }}>
         Ask about a medicine
       </h2>
 
       <p style={{
-        fontSize: '1rem',
+        fontSize: '0.9rem',
         color: 'var(--text-secondary)',
         maxWdith: '580px',
-        margin: '0 auto 32px auto',
+        margin: '0 auto 22px auto',
         lineHeight: 1.5
       }}>
         Get information directly from official medicine prescribing documents, with the exact source page shown for every fact.
@@ -122,8 +122,8 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
       /* Suggestion Grid */
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '12px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
+        gap: '10px',
         textAlign: 'left'
       }}>
         {suggestions.map((item, idx) => {
@@ -137,13 +137,13 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
                 backgroundColor: 'var(--bg-surface)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-md)',
-                padding: '14px 16px',
+                padding: '11px 14px',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                gap: '8px',
+                gap: '6px',
                 boxShadow: 'var(--shadow-sm)'
               }}
               onMouseEnter={(e) => {
