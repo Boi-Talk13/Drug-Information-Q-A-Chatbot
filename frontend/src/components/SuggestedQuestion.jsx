@@ -53,7 +53,10 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
 
   return (
     <div className="animate-fade-in" style={{
-      maxWidth: '700px',
+      // Fixed at 700px this looked lost inside a wide chat panel (big empty
+      // gutters either side on a large monitor). Scale with the panel instead,
+      // capped so lines of text don't get uncomfortably long on ultra-wide screens.
+      maxWidth: 'min(980px, 92%)',
       margin: '24px auto',
       padding: '0 20px',
       textAlign: 'center'
@@ -122,8 +125,8 @@ export default function SuggestedQuestion({ onSelectQuestion, selectedDrugName, 
       /* Suggestion Grid */
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
-        gap: '10px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '12px',
         textAlign: 'left'
       }}>
         {suggestions.map((item, idx) => {
