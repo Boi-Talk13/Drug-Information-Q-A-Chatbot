@@ -1,0 +1,118 @@
+# CD — build, push, and deploy MedCite to AWS Lightsail Containers on every
+# push to main (after CI's checks have run). See README.md "Deployment (AWS)"
+# for the equivalent manual steps this automates.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   AWS_ACCESS_KEY_ID       - for the scoped "medcite-ci" IAM user
+#   AWS_SECRET_ACCESS_KEY   - for the scoped "medcite-ci" IAM user
+#   GROQ_API_KEY            - AI_API_KEY passed into the running container
+#
+# The IAM user this uses should only have Lightsail container permissions
+# (PushContainerImage, CreateContainerServiceDeployment, GetContainerServices,
+# GetContainerImages, RegisterContainerImage) — never reuse a personal/admin key.
+
+name: Deploy to AWS Lightsail
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:     # manual "Run workflow" button too
+
+concurrency:
+  group: deploy-lightsail
+  cancel-in-progress: false   # never cancel a deploy already in flight
+
+env:
+  AWS_REGION: ap-south-1
+  SERVICE_NAME: medcite
+  IMAGE_LABEL: medcite
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install lightsailctl
+        run: |
+          curl -sSL "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" \
+            -o /usr/local/bin/lightsailctl
+          chmod +x /usr/local/bin/lightsailctl
+
+      - name: Build image
+        run: docker build --platform linux/amd64 -t ${{ env.IMAGE_LABEL }}:latest .
+
+      - name: Push image to Lightsail
+        id: push
+        run: |
+          out=$(aws lightsail push-container-image \
+            --region ${{ env.AWS_REGION }} \
+            --service-name ${{ env.SERVICE_NAME }} \
+            --label ${{ env.IMAGE_LABEL }} \
+            --image ${{ env.IMAGE_LABEL }}:latest)
+          echo "$out"
+          ref=$(echo "$out" | grep -oE ':[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+\.[0-9]+' | tail -1)
+          echo "image_ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy new revision
+        run: |
+          cat > /tmp/deployment.json <<EOF
+          {
+            "serviceName": "${{ env.SERVICE_NAME }}",
+            "containers": {
+              "${{ env.IMAGE_LABEL }}": {
+                "image": "${{ steps.push.outputs.image_ref }}",
+                "ports": { "8000": "HTTP" },
+                "environment": {
+                  "AI_API_KEY": "${{ secrets.GROQ_API_KEY }}",
+                  "AI_MODEL": "openai/gpt-oss-20b",
+                  "AI_BASE_URL": "https://api.groq.com/openai/v1",
+                  "DAILY_QUESTION_LIMIT": "30",
+                  "USAGE_TIMEZONE": "Asia/Kolkata",
+                  "PDF_FOLDER": "/app/data/pdfs",
+                  "INDEX_FOLDER": "/app/data/index"
+                }
+              }
+            },
+            "publicEndpoint": {
+              "containerName": "${{ env.IMAGE_LABEL }}",
+              "containerPort": 8000,
+              "healthCheck": { "path": "/", "successCodes": "200-499" }
+            }
+          }
+          EOF
+          aws lightsail create-container-service-deployment \
+            --region ${{ env.AWS_REGION }} \
+            --cli-input-json file:///tmp/deployment.json
+          rm -f /tmp/deployment.json
+
+      - name: Wait for the deployment to go live
+        run: |
+          for i in $(seq 1 30); do
+            state=$(aws lightsail get-container-services --region ${{ env.AWS_REGION }} \
+              --service-name ${{ env.SERVICE_NAME }} \
+              --query 'containerServices[0].state' --output text)
+            dstate=$(aws lightsail get-container-services --region ${{ env.AWS_REGION }} \
+              --service-name ${{ env.SERVICE_NAME }} \
+              --query 'containerServices[0].currentDeployment.state' --output text)
+            echo "state=$state deployment=$dstate"
+            if [ "$state" = "RUNNING" ] && [ "$dstate" = "ACTIVE" ]; then
+              echo "Deployed."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for deployment to become active" >&2
+          exit 1

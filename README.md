@@ -183,8 +183,55 @@ aws lightsail create-container-service-deployment --region ap-south-1 --cli-inpu
 }'
 ```
 
-Redeploying after a code change means repeating steps 1, 3, and 4 (bump the image label number) — there
-is no CI/CD watching the GitHub repo yet, so nothing auto-deploys on push.
+Manually, redeploying after a code change means repeating steps 1, 3, and 4 (bump the image label
+number). With the CD pipeline below in place, this happens automatically on every push to `main`.
+
+### CD pipeline (GitHub Actions)
+
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml) runs the four steps above automatically on
+every push to `main` (and via a manual "Run workflow" button):
+
+1. Build the image (`docker build --platform linux/amd64`)
+2. Install `lightsailctl` on the runner
+3. Push the image to the Lightsail service, capturing the new image ref (`:medcite.medcite.N`)
+4. Deploy that ref with the same env vars as the manual command, then poll
+   `get-container-services` until the new revision is `RUNNING`/`ACTIVE`
+
+It deploys with a dedicated, least-privilege IAM user (`medcite-ci`) — not a personal AWS key — scoped to
+only: `lightsail:PushContainerImage`, `CreateContainerServiceDeployment`, `GetContainerServices`,
+`GetContainerImages`, `RegisterContainerImage`.
+
+**One-time setup**, in the GitHub repo's Settings → Secrets and variables → Actions, add:
+
+| Secret | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | Access key for the `medcite-ci` IAM user |
+| `AWS_SECRET_ACCESS_KEY` | Secret key for the `medcite-ci` IAM user |
+| `GROQ_API_KEY` | The Groq key (becomes `AI_API_KEY` in the container) |
+
+Create that IAM user's credentials with:
+
+```bash
+aws iam create-user --user-name medcite-ci
+aws iam put-user-policy --user-name medcite-ci --policy-name medcite-ci-lightsail --policy-document '{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "lightsail:PushContainerImage",
+      "lightsail:CreateContainerServiceDeployment",
+      "lightsail:GetContainerServices",
+      "lightsail:GetContainerImages",
+      "lightsail:RegisterContainerImage"
+    ],
+    "Resource": "*"
+  }]
+}'
+aws iam create-access-key --user-name medcite-ci   # copy AccessKeyId/SecretAccessKey into the secrets above
+```
+
+Once the three secrets exist, push to `main` and check the **Actions** tab for the `Deploy to AWS
+Lightsail` run.
 
 **Known limits of this setup:**
 - No persistent volume — the SQLite fallback DB, the search index, and any uploaded PDFs reset on every
