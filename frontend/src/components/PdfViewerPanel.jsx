@@ -94,6 +94,14 @@ export default function PdfViewerPanel({ activeCitation, selectedDrug, onClose }
     document.body.style.userSelect = 'none';
   };
 
+  // Keep the chat panel's reserved space (.chat-panel.with-sidebar in
+  // index.css) in sync with this panel's real width, including while
+  // dragging to resize — otherwise the two widths drift apart and the
+  // whole layout overflows the viewport.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--pdf-panel-width', `${panelWidth}px`);
+  }, [panelWidth]);
+
   const scrollRef = useRef(null);
   const pageRefs = useRef({});
   const pdfDocRef = useRef(null);

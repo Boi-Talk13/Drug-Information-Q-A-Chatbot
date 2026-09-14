@@ -148,7 +148,10 @@ body {
 }
 
 .chat-panel.with-sidebar {
-  max-width: calc(100% - 420px);
+  /* Kept in sync with the PDF panel's actual (resizable) width via
+     PdfViewerPanel.jsx, which sets --pdf-panel-width. 480px matches its
+     default so there's no overflow before the panel mounts. */
+  max-width: calc(100% - var(--pdf-panel-width, 480px));
 }
 
 /* Typography Helpers */
