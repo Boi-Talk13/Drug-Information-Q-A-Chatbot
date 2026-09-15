@@ -14,6 +14,8 @@
 #
 # watch-db.sh is the live tail; this one is for looking things up.
 DB="${DB:-medcite}"
+# Hosted databases (e.g. Neon) run in UTC; show times in India time.
+export PGTZ="${PGTZ:-Asia/Kolkata}"
 q() { psql -d "$DB" -P pager=off -c "$1"; }
 
 # Every listing shows the same columns, so output always looks the same.
