@@ -283,10 +283,14 @@ users; heavy use on the free Groq plan falls back to backup answers.
 
 | Part | Who | Job |
 |---|---|---|
-| Front end | Team members 1–3 | Chat screen, PDF viewer, upload and medicine list |
-| Back end | Team members 4–6 | Reading PDFs, search, AI answers and safety (the critical path) |
-| Back end | Team member 7 | API, database, AWS deployment |
-| Lead | Team member 8 | Joins both sides, tests, demo |
+| Front end | Puspha | Builds the chat screen — the question box, the answer area, and the little page-number tags next to each fact |
+| Front end | Harshitha | Builds the PDF viewer beside the chat, so clicking a page number opens that exact page of the PDF |
+| Front end | Soundrya | Builds the upload button, the list of medicines we already have, and shows the refusal and warning messages clearly |
+| Back end | Yaswanth | Reads the text out of the PDFs, keeps the page number of every line, and cuts each PDF into pieces by section |
+| Back end | Mahadev | Builds the search, mixes the two search types together, and tunes it so the right piece comes first |
+| Back end | Bhavesh | Writes the instructions we give the AI, joins short follow-up questions to the earlier chat, makes the bot refuse when there is no proof, and checks every page number is real |
+| Back end | Tejas | Builds the API and the database, puts it online for the demo, runs the monitoring dashboard, and keeps the cost low |
+| Lead — both sides | Maithryi | Joins the front end and back end together, writes the 60 test questions and scores them, and tells the story on demo day |
 
 Data: free public prescribing information from [rxabbvie.com](https://www.rxabbvie.com/).
 Example of a link MedCite accepts for upload: https://www.rxabbvie.com/pdf/linzess_pi.pdf (LINZESS)
