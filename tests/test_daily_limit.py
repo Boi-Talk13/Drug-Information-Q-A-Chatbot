@@ -42,6 +42,7 @@ _calls_lock = threading.Lock()
 
 
 def fake_writer(query, hits, weak=False):
+    """Stand-in for the AI writer that counts calls instead of spending tokens."""
     with _calls_lock:
         ai_calls[query] = ai_calls.get(query, 0) + 1
     threading.Event().wait(0.05)  # overlap parallel requests in the race test
@@ -56,6 +57,7 @@ passed = failed = 0
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
+    """Record and print one test result."""
     global passed, failed
     passed += ok
     failed += not ok
@@ -63,6 +65,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 
 def ask(client, user, question, drug="linzess", history=None):
+    """Send one question to /api/chat as a user and return the JSON reply."""
     r = client.post("/api/chat", json={"question": question, "drug_filter": drug,
                                        "user_id": user, "history": history or []})
     assert r.status_code == 200, r.text
@@ -70,6 +73,7 @@ def ask(client, user, question, drug="linzess", history=None):
 
 
 def total_ai_calls() -> int:
+    """Total number of (fake) AI calls made so far."""
     return sum(ai_calls.values())
 
 

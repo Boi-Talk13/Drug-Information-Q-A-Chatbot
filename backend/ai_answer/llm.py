@@ -37,6 +37,7 @@ def _body_without_heading(text: str, section: str) -> str:
 
 
 def _sentences(text: str) -> List[str]:
+    """Split text into sentences, skipping tiny fragments."""
     parts = _SENT.split(text)
     return [p.strip() for p in parts if len(p.strip()) > 3]
 
@@ -120,6 +121,7 @@ SYSTEM_PROMPT = (
 
 
 def _format_context(hits: List[Hit]) -> str:
+    """Number the retrieved pieces with their page and section so the model can cite them."""
     lines = []
     for i, h in enumerate(hits, 1):
         lines.append(f"[piece {i} | page {h.page} | section: {h.section}]\n{h.text}")
@@ -154,6 +156,7 @@ def groq_answer(query: str, hits: List[Hit], weak: bool = False) -> str:
     ]
 
     def _call(**extra) -> str:
+        """Send the prompt to Groq, log token usage, and return the reply text."""
         resp = client.chat.completions.create(
             model=config.AI_MODEL,
             messages=messages,

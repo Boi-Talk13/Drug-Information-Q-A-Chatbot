@@ -33,6 +33,7 @@ _lock = threading.Lock()
 
 
 def _want_postgres() -> bool:
+    """True if DATABASE_URL points at Postgres and the psycopg2 driver is installed."""
     if not DATABASE_URL.startswith(("postgres://", "postgresql://")):
         return False
     try:
@@ -43,6 +44,7 @@ def _want_postgres() -> bool:
 
 
 def _connect():
+    """Open the shared connection once: Postgres if configured and reachable, otherwise SQLite."""
     global _conn, _backend
     if _conn is not None:
         return _conn
@@ -67,6 +69,7 @@ def _connect():
 
 
 def backend_name() -> str:
+    """Name of the database in use, 'postgres' or 'sqlite' (shown by /api/health)."""
     _connect()
     return _backend or "sqlite"
 
@@ -77,6 +80,7 @@ def _q(sql: str) -> str:
 
 
 def _init_schema() -> None:
+    """Create any missing tables and indexes; safe to run on every start."""
     cur = _conn.cursor()
     if _backend == "postgres":
         cur.execute("""
@@ -226,6 +230,7 @@ def _index_sig() -> str:
 
 
 def _qnorm(q: str) -> str:
+    """Normalise a question into its saved-answer cache key."""
     # Lowercase, strip punctuation, then apply the same typo dictionary the
     # search layer uses. This means "pregent women..." and "pregnant women..."
     # hit the same cache key — one good answer is reused for typo variants.
@@ -237,6 +242,7 @@ def _qnorm(q: str) -> str:
 
 
 def get_cached_answer(user_id: str, drug: Optional[str], question: str) -> Optional[Dict]:
+    """Return the saved answer for this user, medicine and question, or None if it was never asked."""
     try:
         with _lock:
             conn = _connect()
@@ -251,6 +257,7 @@ def get_cached_answer(user_id: str, drug: Optional[str], question: str) -> Optio
 
 
 def cache_answer(user_id: str, drug: Optional[str], question: str, result: Dict) -> None:
+    """Save (or replace) the AI-written answer for this user, medicine and question."""
     try:
         with _lock:
             conn = _connect()
@@ -351,6 +358,7 @@ def release_ai_answer(user_id: str) -> None:
 # ---------------------------------------------------------------------------
 def log_answer(question: str, drug: Optional[str], result: Dict,
                latency_ms: int, user_id: Optional[str] = None) -> None:
+    """Record one answered question in the monitoring log: timing, pages cited, refused or not."""
     try:
         with _lock:
             conn = _connect()
@@ -370,6 +378,7 @@ def log_answer(question: str, drug: Optional[str], result: Dict,
 
 
 def save_chat(user_id: str, drug: Optional[str], question: str, result: Dict) -> None:
+    """Store the question and answer in this user's chat history."""
     try:
         with _lock:
             conn = _connect()
@@ -390,6 +399,7 @@ def save_chat(user_id: str, drug: Optional[str], question: str, result: Dict) ->
 # Reads
 # ---------------------------------------------------------------------------
 def get_history(user_id: str, limit: int = 50) -> List[Dict]:
+    """Return this user's most recent chats, newest first."""
     try:
         with _lock:
             conn = _connect()
@@ -435,6 +445,7 @@ def get_history_by_day(user_id: str, limit: int = 100) -> List[Dict]:
 
 
 def stats(user_id: Optional[str] = None) -> Dict:
+    """Monitoring totals (questions, refusals, advice, average latency, users) for one user or everyone."""
     try:
         with _lock:
             conn = _connect()

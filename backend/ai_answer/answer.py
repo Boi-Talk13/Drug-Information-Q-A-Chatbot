@@ -27,6 +27,7 @@ _CITE = re.compile(r"\[p\.\s*(\d+)(?:\s*,\s*(\d+))?\]")
 
 
 def _snippet(text: str, limit: int = 200) -> str:
+    """Collapse whitespace and trim text to about `limit` characters, ending on a sentence where possible."""
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) <= limit:
         return text
@@ -52,6 +53,7 @@ def _collapse_adjacent_cites(answer: str) -> str:
 
 
 def _pages_in_answer(answer: str) -> List[int]:
+    """Return every page number cited in the answer's [p. N] / [p. N, M] markers."""
     pages: List[int] = []
     for m in _CITE.finditer(answer):
         pages.append(int(m.group(1)))
@@ -63,6 +65,7 @@ def _pages_in_answer(answer: str) -> List[int]:
 def _strip_unverified_pages(answer: str, allowed: set[int]) -> str:
     """Remove any [p. N] whose page is not in the retrieved set."""
     def repl(m: re.Match) -> str:
+        """Keep only cited pages that were actually retrieved; drop the marker if none were."""
         good = [g for g in (m.group(1), m.group(2)) if g and int(g) in allowed]
         if not good:
             return ""  # drop a fully made-up citation marker
@@ -128,6 +131,7 @@ def answer_question(
     user_id: Optional[str] = None,
     llm_allowed: bool = True,
 ) -> Dict:
+    """Answer one question end to end: rewrite follow-ups, run safety checks, search the PDF, write the answer and verify its citations."""
     history = history or []
     retriever = retriever or Retriever()
     user_id = user_id or "anonymous"

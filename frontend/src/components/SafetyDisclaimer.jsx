@@ -1,3 +1,7 @@
+/**
+ * SafetyDisclaimer — the footer explaining that MedCite answers only from the
+ * official PDF and is not medical advice.
+ */
 import React from 'react';
 import { ShieldCheck, Info } from 'lucide-react';
 

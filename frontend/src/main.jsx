@@ -1,3 +1,6 @@
+/**
+ * Entry point — mounts the React app into the page and loads the global styles.
+ */
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'

@@ -33,6 +33,7 @@ from .spellfix import build_vocabulary, correct_query
 
 @dataclass
 class Hit:
+    """One search result: the chunk, its page(s), and its blended and per-ranker scores."""
     chunk_id: str
     drug_id: str
     filename: str
@@ -113,6 +114,7 @@ _DOMAIN_HINT = re.compile(
 
 
 def _minmax(values: List[float]) -> List[float]:
+    """Scale scores to 0..1 so the two rankers can be blended fairly."""
     if not values:
         return []
     lo, hi = min(values), max(values)
@@ -125,6 +127,7 @@ class Retriever:
     """Loads the index once and answers ranked queries against it."""
 
     def __init__(self, index: Optional[Dict] = None):
+        """Load the index and build both rankers (TF-IDF and BM25) over its chunks."""
         self.index = index if index is not None else load_index()
         self.chunks: List[Dict] = self.index.get("chunks", [])
         self.documents: Dict[str, Dict] = self.index.get("documents", {})
@@ -145,6 +148,7 @@ class Retriever:
 
     # -- info helpers -------------------------------------------------------
     def _key(self, owner: Optional[str], drug_id: str) -> str:
+        """Index key for one owner's copy of a medicine, e.g. 'user-101::linzess'."""
         owner_str = owner or "anonymous"
         return f"{owner_str}::{drug_id}"
 
@@ -157,6 +161,7 @@ class Retriever:
         return owners
 
     def has_drug(self, drug_id: str, owner: Optional[str] = None) -> bool:
+        """True if this user can read a document for this medicine."""
         return self.document(drug_id, owner) is not None
 
     def document(self, drug_id: str, owner: Optional[str] = None) -> Optional[Dict]:
@@ -252,6 +257,7 @@ class Retriever:
 
     def search(self, query: str, drug_id: Optional[str] = None,
                owner: Optional[str] = None, top_k: int = None) -> List[Hit]:
+        """Find the best chunks for a query, limited to one medicine and to what this user may read."""
         top_k = top_k or config.TOP_K
         if not self.chunks or not query.strip():
             return []

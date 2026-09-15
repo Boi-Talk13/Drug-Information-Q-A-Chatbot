@@ -52,14 +52,17 @@ RESULTS = TESTS / "results"
 
 
 def f1(p: float, r: float) -> float:
+    """F1 score from precision and recall."""
     return 2 * p * r / (p + r) if (p + r) else 0.0
 
 
 def _results_path(set_file: str) -> Path:
+    """Where saved results for a question set are stored."""
     return RESULTS / f"{Path(set_file).stem}.json"
 
 
 def _load(path: Path) -> dict:
+    """Load saved results, or an empty dict if missing or unreadable."""
     try:
         return json.loads(path.read_text())
     except (OSError, ValueError):
@@ -67,6 +70,7 @@ def _load(path: Path) -> dict:
 
 
 def _save(path: Path, meta: dict, rows: dict) -> None:
+    """Save results atomically so a crash never corrupts earlier answers."""
     # Write to a temp file then swap, so a crash mid-write never corrupts the
     # answers already saved.
     RESULTS.mkdir(exist_ok=True)
@@ -76,6 +80,7 @@ def _save(path: Path, meta: dict, rows: dict) -> None:
 
 
 def _passed(row: dict) -> bool:
+    """True if the refusal decision was right and, for answerable questions, a cited page is correct."""
     should_refuse = row["expect"] == "refuse"
     if row["refused"] != should_refuse:
         return False
@@ -83,6 +88,7 @@ def _passed(row: dict) -> bool:
 
 
 def _print_row(n: int, total: int, qid: str, row: dict) -> None:
+    """Print one PASS/FAIL line for a question."""
     hit = ""
     if row["expect"] == "answer":
         hit = f"{len(set(row['cited']) & set(row['gold']))}/{len(row['cited'])} cited ok"
@@ -93,6 +99,7 @@ def _print_row(n: int, total: int, qid: str, row: dict) -> None:
 
 
 def summarize(items: list, rows: dict, meta: dict) -> None:
+    """Print refusal accuracy and page-citation precision and recall for the whole set."""
     tp = fp = fn = tn = 0                       # refusal, positive class = refuse
     cite_correct = cite_total = gold_total = 0  # page-level citation counts
     answerable = located = fallbacks = 0
@@ -153,6 +160,7 @@ def summarize(items: list, rows: dict, meta: dict) -> None:
 
 
 def main() -> None:
+    """Run a question set against the backend and score the results."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--file", default="questions.json",
                     help="question set in tests/ (e.g. holdout.json)")

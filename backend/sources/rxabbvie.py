@@ -30,6 +30,7 @@ ALLOWED_PATH_PREFIX = "/pdf/"
 
 
 def _load_catalog() -> Set[str]:
+    """Load the saved list of rxabbvie.com PDF filenames, lowercased."""
     try:
         data = json.loads(_CATALOG_FILE.read_text())
         return {n.lower() for n in data.get("filenames", [])}
@@ -41,6 +42,7 @@ CATALOG: Set[str] = _load_catalog()
 
 
 def catalog_size() -> int:
+    """Number of PDFs in the rxabbvie.com catalog snapshot."""
     return len(CATALOG)
 
 

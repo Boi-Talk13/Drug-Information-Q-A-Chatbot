@@ -130,6 +130,7 @@ def correct_query(query: str, vocabulary: Set[str]) -> str:
         return query
 
     def fix_word(w: str) -> str:
+        """Correct one word: known shorthand first, then a close match from the document's own words."""
         low = w.lower()
         if low in COMMON_FIXES:
             return COMMON_FIXES[low]

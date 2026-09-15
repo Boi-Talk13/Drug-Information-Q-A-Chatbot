@@ -46,6 +46,7 @@ def _pdf_page_texts(filename: str) -> list[str]:
 
 
 def main() -> None:
+    """Rebuild each question's expected pages from the PDFs themselves (--check only reports changes)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="report changes without writing")
     args = ap.parse_args()

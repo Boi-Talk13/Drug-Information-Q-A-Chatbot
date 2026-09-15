@@ -83,6 +83,7 @@ MIN_CHUNK_CHARS = 40
 
 @dataclass
 class Chunk:
+    """One searchable piece of a label, with its section and the pages it came from."""
     id: str
     drug_id: str
     filename: str
@@ -335,6 +336,7 @@ def _is_heading_only(body: str, section: str) -> bool:
     there is nothing to cite.
     """
     def norm(s: str) -> str:
+        """Lowercase and strip punctuation so text can be compared loosely."""
         return re.sub(r"[^a-z0-9 ]+", " ", s.lower()).strip()
 
     b, s = norm(body), norm(section)

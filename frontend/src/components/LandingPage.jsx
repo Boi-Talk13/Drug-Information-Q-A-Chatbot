@@ -1,3 +1,7 @@
+/**
+ * LandingPage — the welcome screen: what MedCite does, its main features,
+ * and the button that opens the chat.
+ */
 import React from 'react';
 import {
   Pill,

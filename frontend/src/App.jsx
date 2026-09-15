@@ -1,3 +1,6 @@
+/**
+ * App — switches between the landing page and the chat screen.
+ */
 import React, { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import ChatScreen from './components/ChatScreen';

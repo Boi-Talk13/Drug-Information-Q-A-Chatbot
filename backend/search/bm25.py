@@ -16,11 +16,14 @@ _TOKEN = re.compile(r"[a-z0-9]+")
 
 
 def tokenize(text: str) -> List[str]:
+    """Lowercase the text and split it into word tokens."""
     return _TOKEN.findall(text.lower())
 
 
 class BM25:
+    """Classic BM25 keyword ranking over a list of tokenised documents."""
     def __init__(self, corpus_tokens: List[List[str]], k1: float = 1.5, b: float = 0.75):
+        """Precompute document lengths, term frequencies and IDF for the corpus."""
         self.k1 = k1
         self.b = b
         self.corpus = corpus_tokens
@@ -38,6 +41,7 @@ class BM25:
         }
 
     def scores(self, query: str) -> List[float]:
+        """Return a BM25 score for every document for this query."""
         q = tokenize(query)
         out = [0.0] * self.n
         if not self.n:

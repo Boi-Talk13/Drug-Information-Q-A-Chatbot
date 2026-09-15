@@ -52,6 +52,7 @@ _EXPANSIONS = {
 
 
 def expand_query(query: str) -> str:
+    """Append clinical terms for any lay words in the query, e.g. 'pregnant' adds pregnancy wording."""
     q = query.lower()
     extra = []
     for pattern, words in _EXPANSIONS.items():

@@ -24,10 +24,12 @@ from ..pdf_reader.reader import PdfDocument, read_pdf
 
 
 def _key(owner: str, drug_id: str) -> str:
+    """Index key for one owner's copy of a medicine."""
     return f"{owner}::{drug_id}"
 
 
 def _doc_entry(owner: str, doc, num_chunks: int) -> Dict:
+    """Summary record for one indexed PDF."""
     return {
         "owner": owner,
         "drug_id": doc.drug_id,
@@ -39,6 +41,7 @@ def _doc_entry(owner: str, doc, num_chunks: int) -> Dict:
 
 
 def _chunks_as_dicts(doc_chunks: List[Chunk], owner: str) -> List[Dict]:
+    """Convert chunks to plain dicts tagged with their owner, ready for JSON."""
     out = []
     for c in doc_chunks:
         d = asdict(c)
@@ -75,6 +78,7 @@ def build_index(pdf_dir: Path | None = None, index_file: Path | None = None) -> 
 
 
 def load_index(index_file: Path | None = None) -> Dict:
+    """Load the search index from disk, or an empty one if it hasn't been built yet."""
     index_file = Path(index_file or config.INDEX_FILE)
     if not index_file.exists():
         return {"version": 2, "documents": {}, "chunks": []}
@@ -82,6 +86,7 @@ def load_index(index_file: Path | None = None) -> Dict:
 
 
 def _save(index: Dict, index_file: Path) -> None:
+    """Write the index to disk as JSON."""
     index_file.parent.mkdir(parents=True, exist_ok=True)
     index_file.write_text(json.dumps(index, ensure_ascii=False, indent=2))
 

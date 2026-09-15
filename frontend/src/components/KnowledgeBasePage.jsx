@@ -1,3 +1,7 @@
+/**
+ * KnowledgeBasePage — lists the medicines available to ask about, with a
+ * shortcut to open a chat for any one of them.
+ */
 import React from 'react';
 import { ArrowLeft, FileText, BookOpen, ExternalLink, CheckCircle2, ShieldCheck, Pill } from 'lucide-react';
 import { getAvailableDrugs } from '../services/apiService';

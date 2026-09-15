@@ -1,3 +1,7 @@
+/**
+ * LoadingMessage — the animated "searching..." steps shown while an answer
+ * is being prepared.
+ */
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, ShieldCheck } from 'lucide-react';
 

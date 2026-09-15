@@ -47,6 +47,7 @@ _retriever: Optional[Retriever] = None
 
 
 def get_retriever() -> Retriever:
+    """Return the shared search retriever, building it on first use."""
     global _retriever
     if _retriever is None:
         _retriever = Retriever()
@@ -54,6 +55,7 @@ def get_retriever() -> Retriever:
 
 
 def refresh_retriever() -> Retriever:
+    """Rebuild the retriever so a changed index (e.g. after an upload) is searched."""
     global _retriever
     _retriever = Retriever()
     return _retriever
@@ -61,6 +63,7 @@ def refresh_retriever() -> Retriever:
 
 @app.on_event("startup")
 def _startup() -> None:
+    """Create the data folders and build the search index on first boot or after an index format change."""
     config.INDEX_DIR.mkdir(parents=True, exist_ok=True)
     config.PDF_DIR.mkdir(parents=True, exist_ok=True)
     # Build the index on boot if PDFs exist but no index has been built yet.
@@ -80,11 +83,13 @@ def _startup() -> None:
 
 # --- request/response models -----------------------------------------------
 class HistoryTurn(BaseModel):
+    """One earlier chat turn sent with a question, used to understand follow-ups."""
     role: str
     text: str
 
 
 class ChatRequest(BaseModel):
+    """Body of POST /api/chat."""
     question: str
     history: List[HistoryTurn] = []
     drug_filter: Optional[str] = None
@@ -92,12 +97,14 @@ class ChatRequest(BaseModel):
 
 
 class UserRequest(BaseModel):
+    """Body of POST /api/user: the browser's random token."""
     token: str
 
 
 # --- endpoints --------------------------------------------------------------
 @app.get("/api/health")
 def health() -> dict:
+    """Status check: answer mode, model, database, and what is indexed."""
     r = get_retriever()
     return {
         "status": "ok",
@@ -146,6 +153,7 @@ def get_pdf(drug_id: str, user_id: str = "anonymous") -> FileResponse:
 
 @app.post("/api/chat")
 def chat(req: ChatRequest) -> dict:
+    """Answer one question: serve a saved answer if there is one, otherwise run the full pipeline within the daily limit."""
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="question is required")
     r = get_retriever()

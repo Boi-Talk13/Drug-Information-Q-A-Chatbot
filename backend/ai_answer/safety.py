@@ -66,6 +66,7 @@ def detect_smalltalk(query: str):
 
 
 def smalltalk_response(kind: str, drug_name: str, has_drug: bool) -> Dict:
+    """Build a friendly reply to a greeting, thanks or help request, with example questions."""
     subject = drug_name if has_drug else "a medicine"
     examples = (
         f'Try: “What is the dose of {drug_name}?”, “What are the side effects?”, '
@@ -96,11 +97,13 @@ def smalltalk_response(kind: str, drug_name: str, has_drug: bool) -> Dict:
 
 
 def detect_advice(query: str) -> bool:
+    """True if the question asks for personal medical advice, e.g. 'should I stop taking it?'."""
     q = query.lower()
     return any(re.search(p, q) for p in ADVICE_PATTERNS)
 
 
 def is_out_of_domain(query: str) -> bool:
+    """True if the question is about something a drug label doesn't cover."""
     q = query.lower()
     return any(k in q for k in OUT_OF_DOMAIN)
 
@@ -133,6 +136,7 @@ def rewrite_followup(query: str, history: List[Dict]) -> str:
 # Standard responses
 # ---------------------------------------------------------------------------
 def refusal_no_document(drug_name: str) -> Dict:
+    """Refusal returned when no prescribing PDF is loaded for the selected medicine."""
     return {
         "is_refusal": True,
         "is_advice": False,
@@ -150,6 +154,7 @@ def refusal_no_document(drug_name: str) -> Dict:
 
 
 def refusal_out_of_domain(drug_name: str) -> Dict:
+    """Refusal returned when the question is outside what a drug label covers."""
     return {
         "is_refusal": True,
         "is_advice": False,

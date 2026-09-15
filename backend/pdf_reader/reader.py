@@ -29,6 +29,7 @@ class PageText:
 
 @dataclass
 class PdfDocument:
+    """A PDF's text page by page, keeping the real page numbers."""
     drug_id: str
     filename: str
     title: str
