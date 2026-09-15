@@ -13,6 +13,9 @@ requests>=2.31           # only for the sample-PDF fetch helper
 # Without a key the backend uses the built-in extractive answerer.
 groq>=0.11
 
+# Postgres driver, used when DATABASE_URL is set (otherwise SQLite is used).
+psycopg2-binary>=2.9
+
 # Optional upgrades mentioned in the design (not required to run):
 #   chromadb>=0.5              # swap-in vector store
 #   sentence-transformers>=3.0 # swap-in semantic embeddings
