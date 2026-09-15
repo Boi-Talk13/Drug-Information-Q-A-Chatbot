@@ -134,14 +134,45 @@ test (citation F1) will be re-run on the current version when the Groq daily lim
 
 **Live URL:** https://medcite.ft97gngrew9p0.ap-south-1.cs.amazonlightsail.com/
 
+### Architecture
+
+```mermaid
+flowchart LR
+    USER["User's browser"] -->|HTTPS| APP
+
+    subgraph AWS["AWS Lightsail Containers · ap-south-1 (Mumbai)"]
+        APP["Docker container<br/>FastAPI + built React app<br/>port 8000"]
+        IDX[("Search index + PDFs<br/>inside the container")]
+        APP --- IDX
+    end
+
+    APP -->|"new questions only"| GROQ["Groq API<br/>openai/gpt-oss-20b"]
+    APP <-->|"DATABASE_URL · SSL"| NEON[("Neon PostgreSQL<br/>ap-southeast-1 (Singapore)<br/>users · chats · saved answers · usage")]
+
+    PUSH["git push to main"] --> GHA["GitHub Actions<br/>build · push · deploy"]
+    GHA -->|lightsailctl| APP
+
+    MAC["Your Mac<br/>db.sh · watch-db.sh"] -->|psql| NEON
+```
+
+- **One Docker image** holds everything the app runs: the React frontend is built in a Node stage and
+  served by FastAPI from the same container, so there is one process, one port, one thing to deploy.
+- **Lightsail Containers** runs that image and gives the public HTTPS URL.
+- **Neon PostgreSQL** stores everything that must survive a redeploy: users, chat history, saved answers
+  and daily usage. It lives outside the container, so a new deployment never wipes it.
+- **Groq** is only called for a question nobody has asked before; a repeated question is answered from
+  the saved answers in Neon without using the API key.
+- **GitHub Actions** rebuilds and redeploys the container on every push to `main`.
+
 Deployed as a single container on **AWS Lightsail Containers** (`ap-south-1`) — chosen over EC2/ECS/App
 Runner because it needs no VPC, load balancer, or server patching, and gives a public HTTPS URL as soon
 as the container is created. App Runner was tried first but the account had no service subscription for
 it in any region; Lightsail Containers was the simplest working alternative.
 
 **Tools used:** Docker Desktop (multi-stage build — `node:20-slim` builds the React frontend,
-`python:3.12-slim` serves it via FastAPI/uvicorn on port 8000), AWS CLI, and the `lightsailctl` plugin
-(`brew install aws/tap/lightsailctl`) that `aws lightsail push-container-image` needs.
+`python:3.12-slim` serves it via FastAPI/uvicorn on port 8000), AWS CLI, the `lightsailctl` plugin
+(`brew install aws/tap/lightsailctl`) that `aws lightsail push-container-image` needs, and a free
+**Neon PostgreSQL** database for the app's data (see [Database](#database-neon-postgresql) below).
 
 Steps, run from the project root:
 
@@ -166,6 +197,7 @@ aws lightsail create-container-service-deployment --region ap-south-1 --cli-inpu
       "ports": { "8000": "HTTP" },
       "environment": {
         "AI_API_KEY": "<your Groq key>",
+        "DATABASE_URL": "<your Neon connection string>",
         "AI_MODEL": "openai/gpt-oss-20b",
         "AI_BASE_URL": "https://api.groq.com/openai/v1",
         "DAILY_QUESTION_LIMIT": "30",
@@ -199,7 +231,8 @@ every push to `main` (and via a manual "Run workflow" button):
 
 It deploys with a dedicated, least-privilege IAM user (`medcite-ci`) — not a personal AWS key — scoped to
 only: `lightsail:PushContainerImage`, `CreateContainerServiceDeployment`, `GetContainerServices`,
-`GetContainerImages`, `RegisterContainerImage`.
+`GetContainerImages`, `RegisterContainerImage`, `CreateContainerServiceRegistryLogin` (the last one is
+what lets `lightsailctl` log in to push the image — without it the push fails with AccessDenied).
 
 **One-time setup**, in the GitHub repo's Settings → Secrets and variables → Actions, add:
 
@@ -208,6 +241,7 @@ only: `lightsail:PushContainerImage`, `CreateContainerServiceDeployment`, `GetCo
 | `AWS_ACCESS_KEY_ID` | Access key for the `medcite-ci` IAM user |
 | `AWS_SECRET_ACCESS_KEY` | Secret key for the `medcite-ci` IAM user |
 | `GROQ_API_KEY` | The Groq key (becomes `AI_API_KEY` in the container) |
+| `DATABASE_URL` | The Neon PostgreSQL connection string (becomes `DATABASE_URL` in the container) |
 
 Create that IAM user's credentials with:
 
@@ -222,7 +256,8 @@ aws iam put-user-policy --user-name medcite-ci --policy-name medcite-ci-lightsai
       "lightsail:CreateContainerServiceDeployment",
       "lightsail:GetContainerServices",
       "lightsail:GetContainerImages",
-      "lightsail:RegisterContainerImage"
+      "lightsail:RegisterContainerImage",
+      "lightsail:CreateContainerServiceRegistryLogin"
     ],
     "Resource": "*"
   }]
@@ -230,15 +265,58 @@ aws iam put-user-policy --user-name medcite-ci --policy-name medcite-ci-lightsai
 aws iam create-access-key --user-name medcite-ci   # copy AccessKeyId/SecretAccessKey into the secrets above
 ```
 
-Once the three secrets exist, push to `main` and check the **Actions** tab for the `Deploy to AWS
+Once the four secrets exist, push to `main` and check the **Actions** tab for the `Deploy to AWS
 Lightsail` run.
 
+### Database (Neon PostgreSQL)
+
+The deployed app stores its data in a free **Neon PostgreSQL** database, not inside the container.
+
+**Why Neon:** a Lightsail container has no persistent disk, so a database file inside it (the SQLite
+fallback) is wiped on every redeploy and can't be looked at from outside. Neon is a hosted Postgres with a
+free plan, so the data survives every deployment and can be browsed from any machine. It runs in
+**AWS Singapore (`ap-southeast-1`)** — Neon has no Mumbai region, and Singapore is the closest to the app.
+
+**How the app picks the database:** if `DATABASE_URL` is set (and the `psycopg2-binary` driver is
+installed, which it is in `backend/requirements.txt`), the backend uses Postgres. If it isn't set, or
+Postgres can't be reached, it falls back to SQLite automatically (`backend/api/db.py`). The tables are
+created on first start — nothing to set up by hand.
+
+**What is stored:**
+
+| Table | What it holds |
+|---|---|
+| `users` | Each browser's random token and its short id (`user-101`, `user-102`, ...) |
+| `chat_history` | Every question and answer, with citations, medicine, user and time |
+| `answers` | Monitoring log: response time, pages cited, refused or not, AI or backup writer |
+| `answer_cache` | Saved AI answers — a repeated question is answered from here, no Groq call |
+| `daily_usage` | AI answers each user got per day (the 30-a-day limit) |
+
+**Setup:** create a project on [neon.tech](https://neon.tech) (region: AWS Asia Pacific 1, Singapore),
+copy the connection string from **Connect**, and add it as the `DATABASE_URL` GitHub secret. The next
+deploy connects to it.
+
+**Look at the live data from your Mac** (needs `psql`: `brew install postgresql`):
+
+```bash
+# live view: newest 50 rows, refreshes every 10 seconds (Ctrl+C to stop)
+DB="<your Neon connection string>" bash watch-db.sh
+
+# look things up: overview, today, one user, one medicine, refusals, one full row
+DB="<your Neon connection string>" bash db.sh
+DB="<your Neon connection string>" bash db.sh today
+```
+
+Times are shown in India time. Neon itself runs in UTC and its connection pooler ignores session time zone
+settings, so both scripts convert each timestamp inside the query.
+
 **Known limits of this setup:**
-- No persistent volume — the SQLite fallback DB, the search index, and any uploaded PDFs reset on every
-  redeploy. Set `DATABASE_URL` to a real Postgres instance (e.g. RDS) to make chat history and per-user
-  daily-usage counts durable across deploys.
-- Secrets (the Groq key) are passed as plain deployment environment variables, not a secrets manager —
-  fine for a demo, not for production.
+- The search index and user-uploaded PDFs still live inside the container, so uploads are lost on a
+  redeploy. The 13 built-in PDFs are part of the image and come back automatically.
+- Neon's free plan has 0.5 GB of storage and pauses the database when idle, so the first question after a
+  quiet spell can take a moment longer while it wakes up.
+- Secrets (the Groq key, the database URL) are passed as plain deployment environment variables, not a
+  secrets manager — fine for a demo, not for production.
 
 An older plan to deploy on a plain EC2 instance with `docker compose up` is kept at
 [docs/aws-deploy.md](docs/aws-deploy.md) for reference, but Lightsail Containers is what is actually
@@ -259,7 +337,7 @@ frontend/src/   chat screen, PDF viewer, upload dialog
 data/pdfs/shared/   the 13 built-in medicine PDFs
 tests/          question sets, accuracy scoring, daily-limit test
 docs/           AWS deployment guide
-db.sh, watch-db.sh  browse and watch the chat database
+db.sh, watch-db.sh  browse and watch the chat database (local, or Neon with DB=...)
 ```
 
 ---
