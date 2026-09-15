@@ -14,14 +14,15 @@
 #
 # watch-db.sh is the live tail; this one is for looking things up.
 DB="${DB:-medcite}"
-# Hosted databases (e.g. Neon) run in UTC; show times in India time.
-export PGTZ="${PGTZ:-Asia/Kolkata}"
+# Hosted databases (e.g. Neon) run in UTC, and their connection poolers
+# ignore session time zone settings, so convert inside the query instead.
+TZ_NAME="${TZ_NAME:-Asia/Kolkata}"
 q() { psql -d "$DB" -P pager=off -c "$1"; }
 
 # Every listing shows the same columns, so output always looks the same.
 COLS="id AS \"ID\",
-      to_char(to_timestamp(ts),'DD Mon YYYY') AS \"Date\",
-      to_char(to_timestamp(ts),'HH24:MI') AS \"Time\",
+      to_char((to_timestamp(ts) AT TIME ZONE '$TZ_NAME'),'DD Mon YYYY') AS \"Date\",
+      to_char((to_timestamp(ts) AT TIME ZONE '$TZ_NAME'),'HH24:MI') AS \"Time\",
       user_id AS \"User\",
       COALESCE(drug,'-') AS \"Medicine\",
       LEFT(question,40) AS \"Question\",
@@ -30,7 +31,7 @@ COLS="id AS \"ID\",
 case "${1:-overview}" in
   overview|"")
     echo "── Questions per day ────────────────────────────────────────"
-    q "SELECT to_timestamp(ts)::date AS \"Date\",
+    q "SELECT (to_timestamp(ts) AT TIME ZONE '$TZ_NAME')::date AS \"Date\",
               count(*) AS \"Questions\",
               count(DISTINCT user_id) AS \"Users\",
               count(*) FILTER (WHERE is_refusal = 1) AS \"Refused\"
@@ -40,25 +41,25 @@ case "${1:-overview}" in
        FROM chat_history GROUP BY 1 ORDER BY 2 DESC LIMIT 8;"
     echo "── Most active users ────────────────────────────────────────"
     q "SELECT user_id AS \"User\", count(*) AS \"Questions\",
-              to_char(to_timestamp(max(ts)),'DD Mon HH24:MI') AS \"Last seen\"
+              to_char((to_timestamp(max(ts)) AT TIME ZONE '$TZ_NAME'),'DD Mon HH24:MI') AS \"Last seen\"
        FROM chat_history GROUP BY 1 ORDER BY 2 DESC LIMIT 8;"
     ;;
   days)
-    q "SELECT to_timestamp(ts)::date AS \"Date\",
+    q "SELECT (to_timestamp(ts) AT TIME ZONE '$TZ_NAME')::date AS \"Date\",
               count(*) AS \"Questions\", count(DISTINCT user_id) AS \"Users\"
        FROM chat_history GROUP BY 1 ORDER BY 1;" ;;
   day)
     [ -z "$2" ] && { echo "usage: bash db.sh day 2026-09-11"; exit 1; }
     q "SELECT $COLS FROM chat_history
-       WHERE to_timestamp(ts)::date = DATE '$2' ORDER BY ts;" ;;
+       WHERE (to_timestamp(ts) AT TIME ZONE '$TZ_NAME')::date = DATE '$2' ORDER BY ts;" ;;
   today)
     q "SELECT $COLS FROM chat_history
-       WHERE to_timestamp(ts)::date = current_date ORDER BY ts;" ;;
+       WHERE (to_timestamp(ts) AT TIME ZONE '$TZ_NAME')::date = (now() AT TIME ZONE '$TZ_NAME')::date ORDER BY ts;" ;;
   search)
     [ -z "$2" ] && { echo "usage: bash db.sh search <word> [YYYY-MM-DD]"; exit 1; }
     # Optional 3rd argument narrows the search to a single day.
     DAY_FILTER=""
-    [ -n "$3" ] && DAY_FILTER="AND to_timestamp(ts)::date = DATE '$3'"
+    [ -n "$3" ] && DAY_FILTER="AND (to_timestamp(ts) AT TIME ZONE '$TZ_NAME')::date = DATE '$3'"
     q "SELECT $COLS FROM chat_history
        WHERE (question ILIKE '%$2%' OR answer ILIKE '%$2%') $DAY_FILTER
        ORDER BY ts DESC;" ;;
@@ -72,7 +73,7 @@ case "${1:-overview}" in
     q "SELECT $COLS FROM chat_history WHERE is_refusal = 1 ORDER BY ts DESC;" ;;
   full)
     [ -z "$2" ] && { echo "usage: bash db.sh full 42"; exit 1; }
-    q "SELECT id, to_char(to_timestamp(ts),'DD Mon YYYY HH24:MI') AS when,
+    q "SELECT id, to_char((to_timestamp(ts) AT TIME ZONE '$TZ_NAME'),'DD Mon YYYY HH24:MI') AS when,
               user_id, drug, is_refusal, question, answer, citations
        FROM chat_history WHERE id = $2;" ;;
   *)

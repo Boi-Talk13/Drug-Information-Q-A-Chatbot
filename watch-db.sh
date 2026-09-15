@@ -4,16 +4,17 @@
 # Usage:  bash watch-db.sh        (Ctrl+C to stop)
 DB="${DB:-medcite}"
 INTERVAL="${INTERVAL:-10}"
-# Hosted databases (e.g. Neon) run in UTC; show times in India time.
-export PGTZ="${PGTZ:-Asia/Kolkata}"
+# Hosted databases (e.g. Neon) run in UTC, and their connection poolers
+# ignore session time zone settings, so convert inside the query instead.
+TZ_NAME="${TZ_NAME:-Asia/Kolkata}"
 
 # Short, tidy table — newest first. The Date column shows the real calendar
 # date for every row ("12 Sep 2026"), not relative words like Today/Yesterday,
 # so rows stay unambiguous and keep meaning when you read them back later.
 fetch() {
   psql -d "$DB" -P pager=off -c \
-    "SELECT to_char(to_timestamp(ts), 'DD Mon YYYY') AS \"Date\",
-            to_char(to_timestamp(ts), 'HH24:MI:SS') AS \"Time\",
+    "SELECT to_char(to_timestamp(ts) AT TIME ZONE '$TZ_NAME', 'DD Mon YYYY') AS \"Date\",
+            to_char(to_timestamp(ts) AT TIME ZONE '$TZ_NAME', 'HH24:MI:SS') AS \"Time\",
             user_id AS \"User\",
             LEFT(question, 32) AS \"Question\",
             LEFT(answer, 55)   AS \"Answer\"
