@@ -20,7 +20,7 @@ fetch() {
             LEFT(answer, 55)   AS \"Answer\"
      FROM chat_history
      ORDER BY ts DESC
-     LIMIT 20;"
+     LIMIT 50;"
 }
 
 trap 'echo; echo "stopped."; exit 0' INT
